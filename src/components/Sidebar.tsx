@@ -8,7 +8,8 @@ import {
   FileBarChart, 
   Users, 
   LogOut,
-  Heart
+  Heart,
+  ClipboardList
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -31,6 +32,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
 
   if (isAdmin) {
     navItems.push({ to: '/admin/users', icon: Users, label: 'Utilisateurs' });
+    navItems.push({ to: '/admin/audit', icon: ClipboardList, label: 'Journal d\'audit' });
   }
 
   return (

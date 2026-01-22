@@ -43,6 +43,7 @@ function App() {
             
             {/* Admin */}
             <Route path="/admin/users" element={<Users />} />
+            <Route path="/admin/audit" element={<AuditLogs />} />
           </Route>
         </Route>
       </Routes>

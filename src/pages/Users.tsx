@@ -1,13 +1,26 @@
+
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
-import { Users as UsersIcon, Shield, ShieldOff, Check, X, Trash2 } from 'lucide-react';
+import { Users as UsersIcon, Shield, ShieldOff, Check, X, Trash2, UserPlus, Save } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
 
 const Users = () => {
   const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  
+  // Form state
+  const [newUser, setNewUser] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'volunteer' as 'admin' | 'volunteer'
+  });
+  const [createLoading, setCreateLoading] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -30,6 +43,19 @@ const Users = () => {
     }
   };
 
+  const logAudit = async (action: string, details: any) => {
+    try {
+      await supabase.from('audit_logs').insert({
+        user_id: currentUser?.id,
+        action,
+        details,
+        ip_address: 'client-side' // We can't easily get IP here, but that's fine
+      });
+    } catch (err) {
+      console.error('Failed to log audit:', err);
+    }
+  };
+
   const toggleRole = async (user: User) => {
     if (user.id === currentUser?.id) {
       alert("Vous ne pouvez pas modifier votre propre rôle.");
@@ -37,6 +63,7 @@ const Users = () => {
     }
 
     const newRole = user.role === 'admin' ? 'volunteer' : 'admin';
+    if (!window.confirm(`Voulez-vous vraiment changer le rôle de ${user.name} en ${newRole} ?`)) return;
     
     try {
       const { error } = await supabase
@@ -46,7 +73,8 @@ const Users = () => {
 
       if (error) throw error;
       
-      // Optimistic update
+      await logAudit('update_role', { target_user: user.email, old_role: user.role, new_role: newRole });
+      
       setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole } : u));
     } catch (error) {
       console.error('Error updating role:', error);
@@ -60,6 +88,9 @@ const Users = () => {
       return;
     }
 
+    const action = user.is_active ? 'désactiver' : 'activer';
+    if (!window.confirm(`Voulez-vous vraiment ${action} le compte de ${user.name} ?`)) return;
+
     try {
       const { error } = await supabase
         .from('users')
@@ -68,7 +99,8 @@ const Users = () => {
 
       if (error) throw error;
       
-      // Optimistic update
+      await logAudit('update_status', { target_user: user.email, new_status: !user.is_active });
+
       setUsers(users.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u));
     } catch (error) {
       console.error('Error updating status:', error);
@@ -76,13 +108,67 @@ const Users = () => {
     }
   };
 
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateLoading(true);
+    setCreateError(null);
+
+    try {
+      // Create a temporary client to sign up the user without logging out the admin
+      const tempSupabase = createClient(
+        import.meta.env.VITE_SUPABASE_URL,
+        import.meta.env.VITE_SUPABASE_ANON_KEY
+      );
+
+      const { data, error } = await tempSupabase.auth.signUp({
+        email: newUser.email,
+        password: newUser.password,
+        options: {
+          data: {
+            name: newUser.name,
+            role: newUser.role
+          }
+        }
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        // Log the creation
+        await logAudit('create_user', { 
+          created_email: newUser.email, 
+          role: newUser.role,
+          user_id: data.user.id 
+        });
+
+        // Refresh list
+        await fetchUsers();
+        
+        // Reset and close
+        setNewUser({ name: '', email: '', password: '', role: 'volunteer' });
+        setShowCreateModal(false);
+        alert('Utilisateur créé avec succès !');
+      }
+
+    } catch (err: any) {
+      console.error('Error creating user:', err);
+      setCreateError(err.message || "Erreur lors de la création de l'utilisateur");
+    } finally {
+      setCreateLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-gray-800">Gestion des Utilisateurs</h1>
-        <div className="bg-blue-50 text-blue-800 px-4 py-2 rounded-md text-sm border border-blue-100">
-          Pour ajouter un utilisateur, demandez-lui de s'inscrire via la page de connexion.
-        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-blue-700 transition-colors shadow-sm"
+        >
+          <UserPlus className="h-5 w-5 mr-2" />
+          Ajouter un utilisateur
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
@@ -147,20 +233,22 @@ const Users = () => {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <button
-                        onClick={() => toggleRole(user)}
-                        className="text-gray-600 hover:text-purple-600 mr-4"
-                        title={user.role === 'admin' ? 'Rétrograder bénévole' : 'Promouvoir admin'}
-                      >
-                        {user.role === 'admin' ? <ShieldOff className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
-                      </button>
-                      <button
-                        onClick={() => toggleActive(user)}
-                        className={`${user.is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
-                        title={user.is_active ? 'Désactiver le compte' : 'Activer le compte'}
-                      >
-                        {user.is_active ? <X className="h-5 w-5" /> : <Check className="h-5 w-5" />}
-                      </button>
+                      <div className="flex justify-end space-x-3">
+                        <button
+                          onClick={() => toggleRole(user)}
+                          className="text-gray-600 hover:text-purple-600"
+                          title={user.role === 'admin' ? 'Rétrograder bénévole' : 'Promouvoir admin'}
+                        >
+                          {user.role === 'admin' ? <ShieldOff className="h-5 w-5" /> : <Shield className="h-5 w-5" />}
+                        </button>
+                        <button
+                          onClick={() => toggleActive(user)}
+                          className={`${user.is_active ? 'text-red-600 hover:text-red-900' : 'text-green-600 hover:text-green-900'}`}
+                          title={user.is_active ? 'Désactiver le compte' : 'Activer le compte'}
+                        >
+                          {user.is_active ? <X className="h-5 w-5" /> : <Check className="h-5 w-5" />}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -169,6 +257,103 @@ const Users = () => {
           </div>
         )}
       </div>
+
+      {/* Create User Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
+              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowCreateModal(false)}></div>
+            </div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <UserPlus className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900">
+                      Ajouter un utilisateur
+                    </h3>
+                    <div className="mt-4">
+                      {createError && (
+                        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+                          <span className="block sm:inline">{createError}</span>
+                        </div>
+                      )}
+                      
+                      <form id="create-user-form" onSubmit={handleCreateUser} className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Nom complet</label>
+                          <input
+                            type="text"
+                            required
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                            value={newUser.name}
+                            onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Email</label>
+                          <input
+                            type="email"
+                            required
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                            value={newUser.email}
+                            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Mot de passe</label>
+                          <input
+                            type="password"
+                            required
+                            minLength={6}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                            value={newUser.password}
+                            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700">Rôle</label>
+                          <select
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                            value={newUser.role}
+                            onChange={(e) => setNewUser({...newUser, role: e.target.value as 'admin' | 'volunteer'})}
+                          >
+                            <option value="volunteer">Bénévole</option>
+                            <option value="admin">Administrateur</option>
+                          </select>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="submit"
+                  form="create-user-form"
+                  disabled={createLoading}
+                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm ${createLoading ? 'opacity-75 cursor-wait' : ''}`}
+                >
+                  {createLoading ? 'Création...' : 'Créer'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
