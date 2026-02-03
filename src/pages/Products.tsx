@@ -13,10 +13,11 @@ import {
 } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../components/Toast';
+import { formatStockDisplay } from '../lib/utils';
 
 const Products = () => {
   const { user } = useAuthStore();
-  const isAdmin = user?.role === 'admin';
+  // const isAdmin = user?.role === 'admin'; // Removed admin restriction
   const { addToast } = useToast();
   
   const [products, setProducts] = useState<Product[]>([]);
@@ -90,15 +91,13 @@ const Products = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-800">Gestion des Produits</h1>
         
-        {isAdmin && (
-          <Link
-            to="/products/new"
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
-          >
-            <Plus className="-ml-1 mr-2 h-5 w-5" />
-            Nouveau Produit
-          </Link>
-        )}
+        <Link
+          to="/products/new"
+          className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary"
+        >
+          <Plus className="-ml-1 mr-2 h-5 w-5" />
+          Nouveau Produit
+        </Link>
       </div>
 
       {/* Filters */}
@@ -155,11 +154,9 @@ const Products = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stock Actuel
                   </th>
-                  {isAdmin && (
-                    <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  )}
+                  <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -195,11 +192,11 @@ const Products = () => {
                             ? 'bg-red-100 text-red-800'
                             : 'bg-green-100 text-green-800'
                         }`}>
-                          {product.current_stock}
+                          {formatStockDisplay(product.current_stock, product.boxes_per_carton, product.unit)}
                         </span>
                       </td>
-                      {isAdmin && (
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end">
                           <Link
                             to={`/products/edit/${product.id}`}
                             className="text-primary hover:text-blue-900 mr-4"
@@ -212,8 +209,8 @@ const Products = () => {
                           >
                             <Trash2 className="h-5 w-5" />
                           </button>
-                        </td>
-                      )}
+                        </div>
+                      </td>
                     </tr>
                   ))
                 )}

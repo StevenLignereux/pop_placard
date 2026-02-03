@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Product } from '../lib/types';
 import { Search, ShoppingBag, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '../components/Toast';
+import { formatStockDisplay } from '../lib/utils';
 
 const StockDistribution = () => {
   const { addToast } = useToast();
@@ -14,7 +15,7 @@ const StockDistribution = () => {
   const [formData, setFormData] = useState({
     product_id: '',
     quantity: 1,
-    beneficiary: '', // Stored in reference
+    distribution_date: new Date().toISOString().split('T')[0], // Default to today
     notes: '',
   });
 
@@ -134,8 +135,8 @@ const StockDistribution = () => {
                 >
                   <div className="flex justify-between items-center">
                     <span className="font-medium text-gray-900">{product.name}</span>
-                    <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded-full">
-                      Stock: {product.current_stock}
+                    <span className="text-xs font-bold bg-gray-100 px-2 py-1 rounded-full text-right max-w-[50%] truncate">
+                      {formatStockDisplay(product.current_stock, product.boxes_per_carton, product.unit)}
                     </span>
                   </div>
                   <div className="text-xs text-gray-500 mt-1">
@@ -165,8 +166,11 @@ const StockDistribution = () => {
                 <p className="text-sm text-orange-800 font-medium">Produit sélectionné:</p>
                 <div className="flex justify-between items-end mt-1">
                   <p className="text-lg font-bold text-secondary">{selectedProduct.name}</p>
-                  <p className="text-sm text-gray-600">
-                    Stock disponible: <span className="font-bold">{selectedProduct.current_stock}</span>
+                  <p className="text-sm text-gray-600 text-right">
+                    Stock disponible:<br/>
+                    <span className="font-bold">
+                      {formatStockDisplay(selectedProduct.current_stock, selectedProduct.boxes_per_carton, selectedProduct.unit)}
+                    </span>
                   </p>
                 </div>
               </div>
@@ -194,22 +198,22 @@ const StockDistribution = () => {
                   </p>
                 ) : (
                   <p className="mt-2 text-sm text-green-600">
-                    Stock restant après distribution: {remainingStock}
+                    Stock restant après distribution: {formatStockDisplay(remainingStock, selectedProduct.boxes_per_carton, selectedProduct.unit)}
                   </p>
                 )}
               </div>
 
               <div>
-                <label htmlFor="beneficiary" className="block text-sm font-medium text-gray-700">
-                  Bénéficiaire / Famille (Optionnel)
+                <label htmlFor="distribution_date" className="block text-sm font-medium text-gray-700">
+                  Date de la distribution
                 </label>
                 <input
-                  type="text"
-                  id="beneficiary"
-                  placeholder="Nom ou Numéro de dossier"
+                  type="date"
+                  id="distribution_date"
+                  required
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-secondary focus:ring-secondary sm:text-sm py-2 border px-3"
-                  value={formData.beneficiary}
-                  onChange={(e) => setFormData(prev => ({ ...prev, beneficiary: e.target.value }))}
+                  value={formData.distribution_date}
+                  onChange={(e) => setFormData(prev => ({ ...prev, distribution_date: e.target.value }))}
                 />
               </div>
 

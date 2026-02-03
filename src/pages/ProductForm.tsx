@@ -16,7 +16,7 @@ const ProductForm = () => {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    unit: 'boîte' as ProductUnit,
+    unit: 'boîte' as ProductUnit, // Default to 'boîte' and kept internal
     boxes_per_carton: 1,
     current_stock: 0,
     alert_threshold: 10,
@@ -42,7 +42,7 @@ const ProductForm = () => {
         setFormData({
           name: data.name,
           description: data.description || '',
-          unit: data.unit,
+          unit: 'boîte', // Always force 'boîte'
           boxes_per_carton: data.boxes_per_carton,
           current_stock: data.current_stock,
           alert_threshold: data.alert_threshold,
@@ -91,7 +91,7 @@ const ProductForm = () => {
           .insert([{
             name: formData.name,
             description: formData.description,
-            unit: formData.unit,
+            unit: 'boîte', // Force unit to 'boîte'
             boxes_per_carton: formData.boxes_per_carton,
             current_stock: formData.current_stock,
             alert_threshold: formData.alert_threshold,
@@ -157,24 +157,6 @@ const ProductForm = () => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="unit" className="block text-sm font-medium text-gray-700">
-                Unité de base
-              </label>
-              <select
-                id="unit"
-                name="unit"
-                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2 border px-3"
-                value={formData.unit}
-                onChange={handleChange}
-              >
-                <option value="boîte">Boîte</option>
-                <option value="carton">Carton</option>
-                <option value="kg">Kg</option>
-                <option value="litre">Litre</option>
-              </select>
-            </div>
-
             <div>
               <label htmlFor="boxes_per_carton" className="block text-sm font-medium text-gray-700">
                 Unités par carton
