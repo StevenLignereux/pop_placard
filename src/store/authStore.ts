@@ -46,17 +46,35 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }
 
       // Listen for changes
-      supabase.auth.onAuthStateChange(async (_event, session) => {
+      supabase.auth.onAuthStateChange(async (event, session) => {
+        // Don't trigger loading state for token refresh if we already have the user
+        const currentUser = get().user;
+        const isSameUser = currentUser?.id === session?.user?.id;
+        
+        if (event === 'TOKEN_REFRESHED' && isSameUser) {
+          set({ session });
+          return;
+        }
+
         set({ session, loading: true });
         
         if (session?.user) {
-          const { data: userProfile } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single();
-          
-          set({ user: userProfile, loading: false });
+          try {
+            const { data: userProfile, error } = await supabase
+              .from('users')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            if (error) throw error;
+            set({ user: userProfile });
+          } catch (error) {
+            console.error('Error refreshing user profile:', error);
+            // In case of error, if we had a user, we might want to keep it or handle it.
+            // But we must stop loading.
+          } finally {
+            set({ loading: false });
+          }
         } else {
           set({ user: null, loading: false });
         }

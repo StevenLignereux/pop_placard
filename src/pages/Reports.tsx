@@ -284,15 +284,18 @@ const Reports = () => {
             Aucune donnée pour ce mois.
           </div>
         ) : (
-          <div className="h-80">
+          <div className="h-80" style={{ minWidth: 0, minHeight: 320 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={Object.values(movements.reduce((acc: any, m: any) => {
-                const date = format(parseISO(m.created_at), 'dd/MM');
-                if (!acc[date]) acc[date] = { date, entrées: 0, distributions: 0 };
-                if (m.movement_type === 'entree') acc[date].entrées += m.quantity;
-                else acc[date].distributions += m.quantity;
-                return acc;
-              }, {}))}>
+              <BarChart
+                data={Object.values(movements.reduce((acc: any, m: any) => {
+                  const date = format(parseISO(m.created_at), 'dd/MM');
+                  if (!acc[date]) acc[date] = { date, entrées: 0, distributions: 0 };
+                  if (m.movement_type === 'entree') acc[date].entrées += m.quantity;
+                  else acc[date].distributions += m.quantity;
+                  return acc;
+                }, {}))}
+                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+              >
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" />
                 <YAxis />

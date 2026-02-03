@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { supabase } from './lib/supabase';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -18,6 +19,21 @@ function App() {
 
   useEffect(() => {
     initialize();
+
+    // Robust reconnection handling on visibility change
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible') {
+        // Force session check when app comes to foreground
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Sync session to ensure freshness
+          useAuthStore.getState().setSession(session);
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [initialize]);
 
   return (
