@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Product } from '../lib/types';
 import { Search, ShoppingBag, CheckCircle, AlertTriangle } from 'lucide-react';
+import { useToast } from '../components/Toast';
 
 const StockDistribution = () => {
+  const { addToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -38,6 +40,7 @@ const StockDistribution = () => {
       setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
+      addToast('Erreur lors du chargement des produits', 'error');
     } finally {
       setLoading(false);
     }
@@ -54,7 +57,7 @@ const StockDistribution = () => {
     try {
       setSubmitting(true);
       
-      const { data, error } = await supabase.rpc('record_stock_movement', {
+      const { error } = await supabase.rpc('record_stock_movement', {
         p_product_id: formData.product_id,
         p_movement_type: 'sortie',
         p_quantity: formData.quantity,
@@ -64,7 +67,7 @@ const StockDistribution = () => {
 
       if (error) throw error;
 
-      alert(`Distribution de ${formData.quantity} ${selectedProduct?.unit}(s) enregistrée avec succès.`);
+      addToast(`Distribution de ${formData.quantity} ${selectedProduct?.unit}(s) enregistrée avec succès.`, 'success');
       
       // Reset form
       setFormData({
@@ -79,7 +82,7 @@ const StockDistribution = () => {
       fetchProducts();
     } catch (error: any) {
       console.error('Error recording distribution:', error);
-      alert('Erreur: ' + error.message);
+      addToast('Erreur: ' + error.message, 'error');
     } finally {
       setSubmitting(false);
     }

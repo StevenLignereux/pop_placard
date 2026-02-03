@@ -14,6 +14,10 @@ interface ModalProps {
   description?: string;
 }
 
+export function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
+
 const Modal = ({ 
   isOpen, 
   onClose, 

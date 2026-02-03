@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { Product } from '../lib/types';
 import { Search, Package, Save, AlertCircle } from 'lucide-react';
+import { useToast } from '../components/Toast';
 
 const StockEntry = () => {
+  const { addToast } = useToast();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -62,7 +64,7 @@ const StockEntry = () => {
 
       if (error) throw error;
 
-      alert(`Entrée de ${totalUnits} ${selectedProduct?.unit}(s) enregistrée avec succès.`);
+      addToast(`Entrée de ${totalUnits} ${selectedProduct?.unit}(s) enregistrée avec succès.`, 'success');
       
       // Reset form
       setFormData({
@@ -77,7 +79,7 @@ const StockEntry = () => {
       fetchProducts();
     } catch (error: any) {
       console.error('Error recording entry:', error);
-      alert('Erreur: ' + error.message);
+      addToast('Erreur: ' + error.message, 'error');
     } finally {
       setSubmitting(false);
     }

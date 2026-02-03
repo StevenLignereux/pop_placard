@@ -3,12 +3,15 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { ProductUnit } from '../lib/types';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useToast } from '../components/Toast';
 
 const ProductForm = () => {
   const navigate = useNavigate();
   const { id } = useParams();
   const isEditMode = !!id;
 
+  const { addToast } = useToast();
+  
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -97,10 +100,11 @@ const ProductForm = () => {
         if (error) throw error;
       }
       
+      addToast(`Produit ${isEditMode ? 'modifié' : 'créé'} avec succès`, 'success');
       navigate('/products');
     } catch (error) {
       console.error('Error saving product:', error);
-      alert('Erreur lors de l\'enregistrement du produit');
+      addToast('Erreur lors de l\'enregistrement du produit', 'error');
     } finally {
       setLoading(false);
     }

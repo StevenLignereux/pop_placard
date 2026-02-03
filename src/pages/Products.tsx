@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -11,10 +12,12 @@ import {
   AlertTriangle 
 } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../components/Toast';
 
 const Products = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
+  const { addToast } = useToast();
   
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -42,27 +45,37 @@ const Products = () => {
       setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
+      addToast('Erreur lors du chargement des produits', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
+  const handleDeleteClick = (id: string) => {
+    setProductToDelete(id);
+  };
 
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+    
+    setDeleteLoading(true);
     try {
       const { error } = await supabase
         .from('products')
         .update({ is_active: false })
-        .eq('id', id);
+        .eq('id', productToDelete);
 
       if (error) throw error;
       
       // Optimistic update
-      setProducts(products.filter(p => p.id !== id));
+      setProducts(products.filter(p => p.id !== productToDelete));
+      setProductToDelete(null);
+      addToast('Produit supprimé avec succès', 'success');
     } catch (error) {
       console.error('Error deleting product:', error);
-      alert('Erreur lors de la suppression du produit');
+      addToast('Erreur lors de la suppression du produit', 'error');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -209,6 +222,17 @@ const Products = () => {
           </div>
         )}
       </div>
+
+      <ConfirmationModal
+        isOpen={!!productToDelete}
+        onClose={() => setProductToDelete(null)}
+        onConfirm={confirmDelete}
+        title="Supprimer le produit"
+        message="Êtes-vous sûr de vouloir supprimer ce produit ? Il sera archivé et ne sera plus visible dans la liste."
+        confirmLabel="Supprimer"
+        variant="danger"
+        isLoading={deleteLoading}
+      />
     </div>
   );
 };

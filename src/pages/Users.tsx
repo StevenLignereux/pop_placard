@@ -7,8 +7,10 @@ import { Users as UsersIcon, Shield, ShieldOff, Check, X, UserPlus } from 'lucid
 import { createClient } from '@supabase/supabase-js';
 import Modal from '../components/Modal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { useToast } from '../components/Toast';
 
 const Users = () => {
+  const { addToast } = useToast();
   const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,10 @@ const Users = () => {
   });
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  // Confirmation state
+  const [confirmAction, setConfirmAction] = useState<{ type: 'role' | 'active', user: User } | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -40,6 +46,7 @@ const Users = () => {
       setUsers(data || []);
     } catch (error) {
       console.error('Error fetching users:', error);
+      addToast('Erreur lors du chargement des utilisateurs', 'error');
     } finally {
       setLoading(false);
     }
@@ -58,55 +65,49 @@ const Users = () => {
     }
   };
 
-  const toggleRole = async (user: User) => {
+  const toggleRole = (user: User) => {
     if (user.id === currentUser?.id) {
-      alert("Vous ne pouvez pas modifier votre propre rôle.");
+      addToast("Vous ne pouvez pas modifier votre propre rôle.", 'warning');
       return;
     }
-
-    const newRole = user.role === 'admin' ? 'volunteer' : 'admin';
-    if (!window.confirm(`Voulez-vous vraiment changer le rôle de ${user.name} en ${newRole} ?`)) return;
-    
-    try {
-      const { error } = await supabase
-        .from('users')
-        .update({ role: newRole })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      
-      await logAudit('update_role', { target_user: user.email, old_role: user.role, new_role: newRole });
-      
-      setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole } : u));
-    } catch (error) {
-      console.error('Error updating role:', error);
-      alert('Erreur lors de la modification du rôle');
-    }
+    setConfirmAction({ type: 'role', user });
   };
 
-  const toggleActive = async (user: User) => {
+  const toggleActive = (user: User) => {
     if (user.id === currentUser?.id) {
-      alert("Vous ne pouvez pas désactiver votre propre compte.");
+      addToast("Vous ne pouvez pas désactiver votre propre compte.", 'warning');
       return;
     }
+    setConfirmAction({ type: 'active', user });
+  };
 
-    const action = user.is_active ? 'désactiver' : 'activer';
-    if (!window.confirm(`Voulez-vous vraiment ${action} le compte de ${user.name} ?`)) return;
-
+  const handleConfirmAction = async () => {
+    if (!confirmAction) return;
+    
+    const { type, user } = confirmAction;
+    setActionLoading(true);
+    
     try {
-      const { error } = await supabase
-        .from('users')
-        .update({ is_active: !user.is_active })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      
-      await logAudit('update_status', { target_user: user.email, new_status: !user.is_active });
-
-      setUsers(users.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u));
+      if (type === 'role') {
+        const newRole = user.role === 'admin' ? 'volunteer' : 'admin';
+        const { error } = await supabase.from('users').update({ role: newRole }).eq('id', user.id);
+        if (error) throw error;
+        await logAudit('update_role', { target_user: user.email, old_role: user.role, new_role: newRole });
+        setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole } : u));
+        addToast(`Rôle mis à jour avec succès : ${user.name} est maintenant ${newRole === 'admin' ? 'Administrateur' : 'Bénévole'}`, 'success');
+      } else {
+        const { error } = await supabase.from('users').update({ is_active: !user.is_active }).eq('id', user.id);
+        if (error) throw error;
+        await logAudit('update_status', { target_user: user.email, new_status: !user.is_active });
+        setUsers(users.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u));
+        addToast(`Statut mis à jour avec succès : Le compte de ${user.name} est ${!user.is_active ? 'activé' : 'désactivé'}`, 'success');
+      }
+      setConfirmAction(null);
     } catch (error) {
-      console.error('Error updating status:', error);
-      alert('Erreur lors de la modification du statut');
+      console.error(`Error updating ${type}:`, error);
+      addToast(`Erreur lors de la modification du ${type === 'role' ? 'rôle' : 'statut'}`, 'error');
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -149,12 +150,13 @@ const Users = () => {
         // Reset and close
         setNewUser({ name: '', email: '', password: '', role: 'volunteer' });
         setShowCreateModal(false);
-        alert('Utilisateur créé avec succès !');
+        addToast('Utilisateur créé avec succès !', 'success');
       }
 
     } catch (err: any) {
       console.error('Error creating user:', err);
       setCreateError(err.message || "Erreur lors de la création de l'utilisateur");
+      addToast("Erreur lors de la création de l'utilisateur", 'error');
     } finally {
       setCreateLoading(false);
     }
@@ -339,6 +341,21 @@ const Users = () => {
           </form>
         </div>
       </Modal>
+
+      {/* Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={!!confirmAction}
+        onClose={() => setConfirmAction(null)}
+        onConfirm={handleConfirmAction}
+        title={confirmAction?.type === 'role' ? 'Changer le rôle' : (confirmAction?.user.is_active ? 'Désactiver le compte' : 'Activer le compte')}
+        message={confirmAction?.type === 'role' 
+          ? `Voulez-vous vraiment changer le rôle de ${confirmAction.user.name} en ${confirmAction.user.role === 'admin' ? 'bénévole' : 'administrateur'} ?`
+          : `Voulez-vous vraiment ${confirmAction?.user.is_active ? 'désactiver' : 'activer'} le compte de ${confirmAction?.user.name} ?`
+        }
+        confirmLabel="Confirmer"
+        variant={confirmAction?.type === 'role' ? 'warning' : 'danger'}
+        isLoading={actionLoading}
+      />
     </div>
   );
 };
