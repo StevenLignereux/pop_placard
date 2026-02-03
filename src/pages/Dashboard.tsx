@@ -168,9 +168,9 @@ const Dashboard = () => {
         {/* Chart */}
         <div className="bg-white rounded-lg shadow-sm p-6 lg:col-span-2">
           <h2 className="text-lg font-semibold text-gray-800 mb-4">Mouvements de stock (7 derniers jours)</h2>
-          <div className="h-80">
+          <div className="h-80" style={{ minWidth: 0, minHeight: 320 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={recentMovements}>
+              <BarChart data={recentMovements} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                 <XAxis dataKey="date" />
                 <YAxis />

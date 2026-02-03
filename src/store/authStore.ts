@@ -25,65 +25,93 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   setLoading: (loading) => set({ loading }),
   
   initialize: async () => {
+    // Prevent concurrent initialization
     if (get().initialized) return;
-
-    try {
-      // Get initial session
-      const { data: { session } } = await supabase.auth.getSession();
-      set({ session });
-
-      if (session?.user) {
-        // Fetch user profile
-        const { data: userProfile, error } = await supabase
-          .from('users')
-          .select('*')
-          .eq('id', session.user.id)
-          .single();
-        
-        if (!error && userProfile) {
-          set({ user: userProfile });
-        }
-      }
-
-      // Listen for changes
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        // Don't trigger loading state for token refresh if we already have the user
-        const currentUser = get().user;
-        const isSameUser = currentUser?.id === session?.user?.id;
-        
-        if (event === 'TOKEN_REFRESHED' && isSameUser) {
-          set({ session });
-          return;
-        }
-
-        set({ session, loading: true });
-        
-        if (session?.user) {
-          try {
-            const { data: userProfile, error } = await supabase
-              .from('users')
-              .select('*')
-              .eq('id', session.user.id)
-              .single();
-            
-            if (error) throw error;
-            set({ user: userProfile });
-          } catch (error) {
-            console.error('Error refreshing user profile:', error);
-            // In case of error, if we had a user, we might want to keep it or handle it.
-            // But we must stop loading.
-          } finally {
-            set({ loading: false });
-          }
-        } else {
-          set({ user: null, loading: false });
-        }
-      });
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-    } finally {
-      set({ loading: false, initialized: true });
+    
+    // Check if initialization is already in progress
+    const state = get();
+    if ((state as any)._initPromise) {
+      return (state as any)._initPromise;
     }
+
+    const initPromise = (async () => {
+      try {
+        // Get initial session
+        const { data: { session } } = await supabase.auth.getSession();
+        set({ session });
+
+        if (session?.user) {
+          // Fetch user profile
+          const { data: userProfile, error } = await supabase
+            .from('users')
+            .select('*')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (!error && userProfile) {
+            set({ user: userProfile });
+          }
+        }
+
+        // Listen for changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+          // Don't trigger loading state for token refresh if we already have the user
+          const currentUser = get().user;
+          const isSameUser = currentUser?.id === session?.user?.id;
+          
+          // Optimization: Don't show loader for token refresh or if session matches
+          if (event === 'TOKEN_REFRESHED' || (event === 'SIGNED_IN' && isSameUser)) {
+            if (session) set({ session });
+            return;
+          }
+
+          set({ session, loading: true });
+          
+          // Set a safety timeout to clear loading state in case of stuck requests
+          const safetyTimeout = setTimeout(() => {
+            if (get().loading) {
+              console.warn('Auth loading state stuck, forcing clear');
+              set({ loading: false });
+            }
+          }, 5000);
+          
+          if (session?.user) {
+            try {
+              const { data: userProfile, error } = await supabase
+                .from('users')
+                .select('*')
+                .eq('id', session.user.id)
+                .single();
+              
+              if (error) throw error;
+              set({ user: userProfile });
+            } catch (error) {
+              console.error('Error refreshing user profile:', error);
+            } finally {
+              clearTimeout(safetyTimeout);
+              set({ loading: false });
+            }
+          } else {
+            clearTimeout(safetyTimeout);
+            set({ user: null, loading: false });
+          }
+        });
+
+        // Store subscription for cleanup if needed (though this store is global)
+        (get() as any)._subscription = subscription;
+
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+      } finally {
+        set({ loading: false, initialized: true });
+        // Clean up the promise tracker
+        delete (get() as any)._initPromise;
+      }
+    })();
+
+    // Store the promise
+    (get() as any)._initPromise = initPromise;
+    return initPromise;
   },
 
   signOut: async () => {
