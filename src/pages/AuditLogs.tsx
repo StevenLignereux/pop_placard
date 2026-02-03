@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../store/authStore';
-import { ClipboardList, Search, Calendar } from 'lucide-react';
+import { ClipboardList } from 'lucide-react';
 
 interface AuditLog {
   id: string;

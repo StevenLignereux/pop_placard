@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { User } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
-import { Users as UsersIcon, Shield, ShieldOff, Check, X, Trash2, UserPlus, Save } from 'lucide-react';
+import { Users as UsersIcon, Shield, ShieldOff, Check, X, UserPlus } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
+import Modal from '../components/Modal';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const Users = () => {
   const { user: currentUser } = useAuthStore();
@@ -259,101 +261,84 @@ const Users = () => {
       </div>
 
       {/* Create User Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            <div className="fixed inset-0 transition-opacity" aria-hidden="true">
-              <div className="absolute inset-0 bg-gray-500 opacity-75" onClick={() => setShowCreateModal(false)}></div>
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title="Ajouter un utilisateur"
+        description="Créez un nouveau compte pour un bénévole ou un administrateur."
+        footer={
+          <>
+            <button
+              type="submit"
+              form="create-user-form"
+              disabled={createLoading}
+              className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-primary text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:ml-3 sm:w-auto sm:text-sm ${createLoading ? 'opacity-75 cursor-wait' : ''}`}
+            >
+              {createLoading ? 'Création...' : 'Créer'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+            >
+              Annuler
+            </button>
+          </>
+        }
+      >
+        <div className="mt-2">
+          {createError && (
+            <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
+              <span className="block sm:inline">{createError}</span>
             </div>
-
-            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-blue-100 sm:mx-0 sm:h-10 sm:w-10">
-                    <UserPlus className="h-6 w-6 text-blue-600" />
-                  </div>
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      Ajouter un utilisateur
-                    </h3>
-                    <div className="mt-4">
-                      {createError && (
-                        <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative" role="alert">
-                          <span className="block sm:inline">{createError}</span>
-                        </div>
-                      )}
-                      
-                      <form id="create-user-form" onSubmit={handleCreateUser} className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Nom complet</label>
-                          <input
-                            type="text"
-                            required
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                            value={newUser.name}
-                            onChange={(e) => setNewUser({...newUser, name: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Email</label>
-                          <input
-                            type="email"
-                            required
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                            value={newUser.email}
-                            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Mot de passe</label>
-                          <input
-                            type="password"
-                            required
-                            minLength={6}
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                            value={newUser.password}
-                            onChange={(e) => setNewUser({...newUser, password: e.target.value})}
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700">Rôle</label>
-                          <select
-                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
-                            value={newUser.role}
-                            onChange={(e) => setNewUser({...newUser, role: e.target.value as 'admin' | 'volunteer'})}
-                          >
-                            <option value="volunteer">Bénévole</option>
-                            <option value="admin">Administrateur</option>
-                          </select>
-                        </div>
-                      </form>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="submit"
-                  form="create-user-form"
-                  disabled={createLoading}
-                  className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm ${createLoading ? 'opacity-75 cursor-wait' : ''}`}
-                >
-                  {createLoading ? 'Création...' : 'Créer'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Annuler
-                </button>
-              </div>
+          )}
+          
+          <form id="create-user-form" onSubmit={handleCreateUser} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Nom complet</label>
+              <input
+                type="text"
+                required
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                value={newUser.name}
+                onChange={(e) => setNewUser({...newUser, name: e.target.value})}
+              />
             </div>
-          </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <input
+                type="email"
+                required
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                value={newUser.email}
+                onChange={(e) => setNewUser({...newUser, email: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Mot de passe</label>
+              <input
+                type="password"
+                required
+                minLength={6}
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                value={newUser.password}
+                onChange={(e) => setNewUser({...newUser, password: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Rôle</label>
+              <select
+                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-primary focus:border-primary sm:text-sm"
+                value={newUser.role}
+                onChange={(e) => setNewUser({...newUser, role: e.target.value as 'admin' | 'volunteer'})}
+              >
+                <option value="volunteer">Bénévole</option>
+                <option value="admin">Administrateur</option>
+              </select>
+            </div>
+          </form>
         </div>
-      )}
+      </Modal>
     </div>
   );
 };

@@ -10,6 +10,7 @@ import {
   Trash2, 
   AlertTriangle 
 } from 'lucide-react';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 const Products = () => {
   const { user } = useAuthStore();
@@ -19,6 +20,10 @@ const Products = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<'all' | 'low_stock'>('all');
+
+  // Delete modal state
+  const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -189,7 +194,7 @@ const Products = () => {
                             <Edit className="h-5 w-5" />
                           </Link>
                           <button
-                            onClick={() => handleDelete(product.id)}
+                            onClick={() => handleDeleteClick(product.id)}
                             className="text-red-600 hover:text-red-900"
                           >
                             <Trash2 className="h-5 w-5" />

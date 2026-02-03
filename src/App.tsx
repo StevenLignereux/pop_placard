@@ -10,6 +10,7 @@ import StockEntry from './pages/StockEntry';
 import StockDistribution from './pages/StockDistribution';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
+import AuditLogs from './pages/AuditLogs';
 import { useAuthStore } from './store/authStore';
 
 function App() {
