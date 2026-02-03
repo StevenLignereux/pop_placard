@@ -38,7 +38,7 @@ const Reports = () => {
 
       const { data, error } = await supabase
         .from('stock_movements')
-        .select('*, product:products(name, unit)')
+        .select('*, product:products(name, unit, boxes_per_carton)')
         .gte('created_at', start)
         .lte('created_at', end)
         .order('created_at', { ascending: true });
@@ -78,52 +78,111 @@ const Reports = () => {
     const doc = new jsPDF();
     const monthStr = format(currentDate, 'MMMM yyyy', { locale: fr });
 
-    // Header
-    doc.setFontSize(20);
-    doc.text(`Rapport Mensuel - ${monthStr}`, 14, 22);
-    
-    doc.setFontSize(11);
-    doc.text(`Secours Populaire Français`, 14, 30);
-    doc.text(`Date d'émission: ${format(new Date(), 'dd/MM/yyyy')}`, 14, 36);
+    // Group movements by Product
+    const productStats: Record<string, {
+      name: string;
+      lots: Set<string>;
+      cartonsReceived: number;
+      boxesDistributed: number;
+    }> = {};
 
-    // Summary
-    doc.setFontSize(14);
-    doc.text("Résumé de l'activité", 14, 50);
-    
-    const summaryData = [
-      ['Total Entrées', `${stats.entries} unités`],
-      ['Total Distributions', `${stats.distributions} unités`],
-      ['Produit le plus actif', stats.mostActiveProduct],
-    ];
+    movements.forEach(m => {
+      const pName = m.product?.name || 'Inconnu';
+      if (!productStats[pName]) {
+        productStats[pName] = {
+          name: pName,
+          lots: new Set(),
+          cartonsReceived: 0,
+          boxesDistributed: 0,
+        };
+      }
 
-    autoTable(doc, {
-      startY: 55,
-      head: [['Métrique', 'Valeur']],
-      body: summaryData,
-      theme: 'striped',
-      headStyles: { fillColor: [0, 102, 204] },
+      if (m.movement_type === 'entree') {
+        const bpc = m.product?.boxes_per_carton || 1;
+        // Convert units to cartons for entries
+        productStats[pName].cartonsReceived += (m.quantity / bpc);
+        if (m.reference) productStats[pName].lots.add(m.reference);
+      } else {
+        // Keep units (boxes) for distributions
+        productStats[pName].boxesDistributed += m.quantity;
+      }
     });
 
-    // Details Table
+    // Header
+    doc.setFillColor(0, 102, 204); // Primary color
+    doc.rect(0, 0, 210, 40, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.text(`Rapport Mensuel de Stock`, 14, 20);
+    
     doc.setFontSize(14);
-    doc.text("Détail des mouvements", 14, (doc as any).lastAutoTable.finalY + 15);
+    doc.text(monthStr.charAt(0).toUpperCase() + monthStr.slice(1), 14, 30);
+    
+    doc.setFontSize(10);
+    doc.text(`Secours Populaire Français`, 200, 20, { align: 'right' });
+    doc.text(`Généré le ${format(new Date(), 'dd/MM/yyyy')}`, 200, 30, { align: 'right' });
 
-    const tableData = movements.map(m => [
-      format(parseISO(m.created_at), 'dd/MM/yy HH:mm'),
-      m.product?.name,
-      m.movement_type === 'entree' ? 'Entrée' : 'Sortie',
-      m.quantity,
-      m.reference || '-',
-    ]);
+    doc.setTextColor(0, 0, 0);
+
+    // Summary Text
+    doc.setFontSize(11);
+    doc.text(`Ce rapport synthétise les mouvements de stock (Entrées et Sorties) pour la période sélectionnée.`, 14, 50);
+    doc.text(`Les entrées sont comptabilisées en cartons, les sorties en boîtes/unités.`, 14, 56);
+
+      // Main Table
+    const tableData = Object.values(productStats)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map(p => [
+        p.name,
+        Array.from(p.lots).join(', ') || '-',
+        Number.isInteger(p.cartonsReceived) ? p.cartonsReceived.toString() : p.cartonsReceived.toFixed(1),
+        p.boxesDistributed,
+        '' // Empty column for handwritten notes
+      ]);
 
     autoTable(doc, {
-      startY: (doc as any).lastAutoTable.finalY + 20,
-      head: [['Date', 'Produit', 'Type', 'Quantité', 'Référence']],
+      startY: 65,
+      head: [['Désignation Produit', 'N° Lot', 'Entrées (Cartons)', 'Sorties (Boîtes)', 'Corrections ou remarques']],
       body: tableData,
       theme: 'grid',
-      headStyles: { fillColor: [0, 102, 204] },
-      styles: { fontSize: 8 },
+      headStyles: { 
+        fillColor: [0, 102, 204],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        halign: 'center',
+        valign: 'middle'
+      },
+      columnStyles: {
+        0: { cellWidth: 50, fontStyle: 'bold' }, // Désignation
+        1: { cellWidth: 35 }, // Lot
+        2: { cellWidth: 25, halign: 'center', textColor: [40, 167, 69] }, // Entrées (Green)
+        3: { cellWidth: 25, halign: 'center', textColor: [255, 102, 0] }, // Sorties (Orange)
+        4: { cellWidth: 55 } // Corrections (Wide for handwriting)
+      },
+      styles: { 
+        fontSize: 10,
+        cellPadding: 3,
+        valign: 'middle',
+        minCellHeight: 12 // Increased height (~3cm visually on paper depending on print scale, but good for handwriting)
+      },
+      alternateRowStyles: {
+        fillColor: [245, 247, 250]
+      },
+      margin: { top: 60 }
     });
+
+    // Footer with Totals
+    const finalY = (doc as any).lastAutoTable.finalY + 10;
+    
+    // Calculate global totals
+    const totalCartons = Object.values(productStats).reduce((sum, p) => sum + p.cartonsReceived, 0);
+    const totalBoxes = Object.values(productStats).reduce((sum, p) => sum + p.boxesDistributed, 0);
+
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.text(`Total Cartons Réceptionnés: ${Number.isInteger(totalCartons) ? totalCartons : totalCartons.toFixed(1)}`, 14, finalY);
+    doc.text(`Total Boîtes Distribuées: ${totalBoxes}`, 100, finalY);
 
     doc.save(`rapport_spf_${format(currentDate, 'yyyy_MM')}.pdf`);
   };
