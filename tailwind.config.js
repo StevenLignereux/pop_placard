@@ -19,23 +19,23 @@ export default {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#0066CC", // Bleu Secours Populaire
+          DEFAULT: "#005BBB", // Bleu Secours Populaire
           foreground: "#FFFFFF",
         },
         secondary: {
-          DEFAULT: "#FF6600", // Orange
-          foreground: "#FFFFFF",
+          DEFAULT: "#F2F2F2", // Gris clair
+          foreground: "#000000",
         },
         destructive: {
-          DEFAULT: "#DC3545", // Rouge
+          DEFAULT: "#005BBB", // Bleu (same as primary)
           foreground: "#FFFFFF",
         },
         success: {
-          DEFAULT: "#28A745", // Vert
+          DEFAULT: "#28A745", // Vert standard (kept for semantics but minimized)
           foreground: "#FFFFFF",
         },
         muted: {
-          DEFAULT: "#F5F5F5", // Gris clair
+          DEFAULT: "#F2F2F2", // Gris clair
           foreground: "#6B7280",
         },
       },

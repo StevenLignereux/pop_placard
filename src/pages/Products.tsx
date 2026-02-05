@@ -63,7 +63,7 @@ const Products = () => {
     try {
       const { error } = await supabase
         .from('products')
-        .update({ is_active: false })
+        .update({ is_active: false } as never)
         .eq('id', productToDelete);
 
       if (error) throw error;
@@ -187,7 +187,7 @@ const Products = () => {
                         {product.boxes_per_carton} {product.unit}(s) / carton
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-bold ${
                           product.current_stock <= product.alert_threshold
                             ? 'bg-red-100 text-red-800'
                             : 'bg-green-100 text-green-800'

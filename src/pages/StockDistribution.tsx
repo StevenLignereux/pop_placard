@@ -58,11 +58,12 @@ const StockDistribution = () => {
     try {
       setSubmitting(true);
       
+      // @ts-ignore
       const { error } = await supabase.rpc('record_stock_movement', {
         p_product_id: formData.product_id,
         p_movement_type: 'sortie',
         p_quantity: formData.quantity,
-        p_reference: formData.beneficiary || null,
+        p_reference: null, // beneficiary field removed from formData
         p_notes: formData.notes || null,
       });
 
@@ -74,7 +75,7 @@ const StockDistribution = () => {
       setFormData({
         product_id: '',
         quantity: 1,
-        beneficiary: '',
+        distribution_date: new Date().toISOString().split('T')[0],
         notes: '',
       });
       setSearchTerm('');
@@ -130,7 +131,7 @@ const StockDistribution = () => {
                   type="button"
                   onClick={() => handleProductSelect(product.id)}
                   className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
-                    formData.product_id === product.id ? 'bg-orange-50 border-l-4 border-secondary' : ''
+                    formData.product_id === product.id ? 'bg-red-50 border-l-4 border-primary' : ''
                   }`}
                 >
                   <div className="flex justify-between items-center">
@@ -151,7 +152,7 @@ const StockDistribution = () => {
         {/* Distribution Details */}
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-800 mb-6 flex items-center">
-            <ShoppingBag className="h-5 w-5 mr-2 text-secondary" />
+            <ShoppingBag className="h-5 w-5 mr-2 text-primary" />
             2. Détails de la distribution
           </h2>
 
@@ -162,10 +163,10 @@ const StockDistribution = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="bg-orange-50 p-4 rounded-md border border-orange-100">
-                <p className="text-sm text-orange-800 font-medium">Produit sélectionné:</p>
+              <div className="bg-red-50 p-4 rounded-md border border-red-100">
+                <p className="text-sm text-red-800 font-medium">Produit sélectionné:</p>
                 <div className="flex justify-between items-end mt-1">
-                  <p className="text-lg font-bold text-secondary">{selectedProduct.name}</p>
+                  <p className="text-lg font-bold text-primary">{selectedProduct.name}</p>
                   <p className="text-sm text-gray-600 text-right">
                     Stock disponible:<br/>
                     <span className="font-bold">
@@ -233,7 +234,7 @@ const StockDistribution = () => {
               <button
                 type="submit"
                 disabled={submitting || isStockInsufficient}
-                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-secondary hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary transition-colors ${
+                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors ${
                   (submitting || isStockInsufficient) ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >

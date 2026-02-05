@@ -61,5 +61,17 @@ export type Database = {
         Update: never; // Stock movements should generally not be updated after creation
       };
     };
+    Functions: {
+      record_stock_movement: {
+        Args: {
+          p_product_id: string;
+          p_movement_type: string;
+          p_quantity: number;
+          p_reference?: string | null;
+          p_notes?: string | null;
+        };
+        Returns: string;
+      };
+    };
   };
 };

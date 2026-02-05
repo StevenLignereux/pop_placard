@@ -54,7 +54,8 @@ const StockEntry = () => {
     try {
       setSubmitting(true);
       
-      const { data, error } = await supabase.rpc('record_stock_movement', {
+      // @ts-ignore
+      const { error } = await supabase.rpc('record_stock_movement', {
         p_product_id: formData.product_id,
         p_movement_type: 'entree',
         p_quantity: totalUnits,
@@ -126,7 +127,7 @@ const StockEntry = () => {
                   type="button"
                   onClick={() => handleProductSelect(product.id)}
                   className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${
-                    formData.product_id === product.id ? 'bg-blue-50 border-l-4 border-primary' : ''
+                    formData.product_id === product.id ? 'bg-red-50 border-l-4 border-primary' : ''
                   }`}
                 >
                   <div className="font-medium text-gray-900">{product.name}</div>
@@ -154,8 +155,8 @@ const StockEntry = () => {
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="bg-blue-50 p-4 rounded-md border border-blue-100">
-                <p className="text-sm text-blue-800 font-medium">Produit sélectionné:</p>
+              <div className="bg-red-50 p-4 rounded-md border border-red-100">
+                <p className="text-sm text-red-800 font-medium">Produit sélectionné:</p>
                 <p className="text-lg font-bold text-primary">{selectedProduct.name}</p>
               </div>
 
@@ -208,7 +209,7 @@ const StockEntry = () => {
               <button
                 type="submit"
                 disabled={submitting}
-                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-success hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-success transition-colors ${
+                className={`w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-base font-medium text-white bg-primary hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors ${
                   submitting ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >

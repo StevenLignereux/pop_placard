@@ -26,7 +26,7 @@ const Login = () => {
       }
       
       // Navigation is handled by the auth listener in App.tsx or we can navigate here
-      navigate('/dashboard');
+      navigate('/products');
     } catch (err: any) {
       setError(err.message || 'Une erreur est survenue lors de la connexion');
     } finally {
@@ -122,7 +122,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-secondary hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary transition-colors ${
+                className={`w-full flex justify-center py-2.5 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors ${
                   loading ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >

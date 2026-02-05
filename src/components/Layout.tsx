@@ -8,7 +8,6 @@ const Layout = () => {
   const location = useLocation();
 
   const getTitle = (pathname: string) => {
-    if (pathname.startsWith('/dashboard')) return 'Tableau de bord';
     if (pathname.startsWith('/products')) return 'Gestion des produits';
     if (pathname.startsWith('/stock/entries')) return 'Entrées de stock';
     if (pathname.startsWith('/stock/distributions')) return 'Distributions';

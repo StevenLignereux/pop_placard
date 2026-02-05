@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { 
-  LayoutDashboard, 
   Package, 
   ArrowDownCircle, 
   ArrowUpCircle, 
@@ -23,7 +22,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
   const isAdmin = user?.role === 'admin';
 
   const navItems = [
-    { to: '/dashboard', icon: LayoutDashboard, label: 'Tableau de bord' },
     { to: '/products', icon: Package, label: 'Produits' },
     { to: '/stock/entries', icon: ArrowDownCircle, label: 'Entrées de stock' },
     { to: '/stock/distributions', icon: ArrowUpCircle, label: 'Distributions' },
@@ -88,7 +86,7 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
           <div className="p-4 border-t border-gray-200">
             <button
               onClick={() => signOut()}
-              className="flex w-full items-center px-4 py-2 text-sm font-medium text-red-600 rounded-md hover:bg-red-50 transition-colors"
+              className="flex w-full items-center px-4 py-2 text-sm font-medium text-primary rounded-md hover:bg-blue-50 transition-colors"
             >
               <LogOut className="mr-3 h-5 w-5" />
               Déconnexion

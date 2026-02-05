@@ -71,19 +71,19 @@ const ToastItem: React.FC<{ toast: Toast; onClose: () => void }> = ({ toast, onC
   const getBorderColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'border-l-4 border-l-green-500 border-green-200 bg-white';
+        return 'border-l-4 border-l-green-600 bg-white text-gray-900';
       case 'error':
-        return 'border-l-4 border-l-red-500 border-red-200 bg-white';
+        return 'border-l-4 border-l-red-600 bg-white text-gray-900';
       case 'warning':
-        return 'border-l-4 border-l-yellow-500 border-yellow-200 bg-white';
+        return 'border-l-4 border-l-yellow-500 bg-white text-gray-900';
       case 'info':
-        return 'border-l-4 border-l-blue-500 border-blue-200 bg-white';
+        return 'border-l-4 border-l-blue-500 bg-white text-gray-900';
     }
   };
 
   return (
     <div
-      className={`flex items-start w-80 p-4 rounded-xl shadow-lg border ${getBorderColor()} animate-in slide-in-from-right duration-300`}
+      className={`flex items-start w-80 p-4 rounded shadow-lg border-t border-r border-b border-gray-200 ${getBorderColor()} animate-in slide-in-from-right duration-300`}
       role="alert"
     >
       <div className="flex-shrink-0 mr-3 mt-0.5">{getIcon()}</div>

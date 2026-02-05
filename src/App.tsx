@@ -4,7 +4,6 @@ import { supabase } from './lib/supabase';
 import Login from './pages/Login';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
-import Dashboard from './pages/Dashboard';
 import Products from './pages/Products';
 import ProductForm from './pages/ProductForm';
 import StockEntry from './pages/StockEntry';
@@ -43,8 +42,7 @@ function App() {
         
         <Route element={<ProtectedRoute />}>
           <Route element={<Layout />}>
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/" element={<Navigate to="/products" replace />} />
             
             {/* Products */}
             <Route path="/products" element={<Products />} />

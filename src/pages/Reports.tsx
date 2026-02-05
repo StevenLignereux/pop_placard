@@ -1,15 +1,5 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  Legend, 
-  ResponsiveContainer 
-} from 'recharts';
 import { FileText, Download, Calendar } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -74,117 +64,151 @@ const Reports = () => {
     }
   };
 
-  const generatePDF = () => {
-    const doc = new jsPDF();
-    const monthStr = format(currentDate, 'MMMM yyyy', { locale: fr });
+  const generatePDF = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch current stock snapshot
+      const { data: currentStock, error: stockError } = await supabase
+        .from('products')
+        .select('name, current_stock, unit, boxes_per_carton')
+        .eq('is_active', true)
+        .order('name');
 
-    // Group movements by Product
-    const productStats: Record<string, {
-      name: string;
-      lots: Set<string>;
-      cartonsReceived: number;
-      boxesDistributed: number;
-    }> = {};
+      if (stockError) throw stockError;
 
-    movements.forEach(m => {
-      const pName = m.product?.name || 'Inconnu';
-      if (!productStats[pName]) {
-        productStats[pName] = {
-          name: pName,
-          lots: new Set(),
-          cartonsReceived: 0,
-          boxesDistributed: 0,
-        };
-      }
+      const doc = new jsPDF();
+      const monthStr = format(currentDate, 'MMMM yyyy', { locale: fr });
+      const generationDate = new Date();
 
-      if (m.movement_type === 'entree') {
-        const bpc = m.product?.boxes_per_carton || 1;
-        // Convert units to cartons for entries
-        productStats[pName].cartonsReceived += (m.quantity / bpc);
-        if (m.reference) productStats[pName].lots.add(m.reference);
-      } else {
-        // Keep units (boxes) for distributions
-        productStats[pName].boxesDistributed += m.quantity;
-      }
-    });
+      // ... rest of PDF generation
 
-    // Header
-    doc.setFillColor(0, 102, 204); // Primary color
-    doc.rect(0, 0, 210, 40, 'F');
-    
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(24);
-    doc.text(`Rapport Mensuel de Stock`, 14, 20);
-    
-    doc.setFontSize(14);
-    doc.text(monthStr.charAt(0).toUpperCase() + monthStr.slice(1), 14, 30);
-    
-    doc.setFontSize(10);
-    doc.text(`Secours Populaire Français`, 200, 20, { align: 'right' });
-    doc.text(`Généré le ${format(new Date(), 'dd/MM/yyyy')}`, 200, 30, { align: 'right' });
+      // Group movements by Product
+      const productStats: Record<string, {
+        name: string;
+        lots: Set<string>;
+        cartonsReceived: number;
+        boxesDistributed: number;
+      }> = {};
 
-    doc.setTextColor(0, 0, 0);
+      movements.forEach(m => {
+        const pName = m.product?.name || 'Inconnu';
+        if (!productStats[pName]) {
+          productStats[pName] = {
+            name: pName,
+            lots: new Set(),
+            cartonsReceived: 0,
+            boxesDistributed: 0,
+          };
+        }
 
-    // Summary Text
-    doc.setFontSize(11);
-    doc.text(`Ce rapport synthétise les mouvements de stock (Entrées et Sorties) pour la période sélectionnée.`, 14, 50);
-    doc.text(`Les entrées sont comptabilisées en cartons, les sorties en boîtes/unités.`, 14, 56);
+        if (m.movement_type === 'entree') {
+          const bpc = m.product?.boxes_per_carton || 1;
+          // Convert units to cartons for entries
+          productStats[pName].cartonsReceived += (m.quantity / bpc);
+          if (m.reference) productStats[pName].lots.add(m.reference);
+        } else {
+          // Keep units (boxes) for distributions
+          productStats[pName].boxesDistributed += m.quantity;
+        }
+      });
+
+      // Header
+      doc.setFillColor(227, 0, 27); // Red Secours Populaire
+      doc.rect(0, 0, 210, 40, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.text(`Rapport Mensuel de Stock`, 14, 20);
+      
+      doc.setFontSize(14);
+      doc.text(monthStr.charAt(0).toUpperCase() + monthStr.slice(1), 14, 30);
+      
+      doc.setFontSize(10);
+      doc.text(`Secours Populaire Français`, 200, 20, { align: 'right' });
+      doc.text(`Généré le ${format(generationDate, 'dd/MM/yyyy')}`, 200, 30, { align: 'right' });
+
+      doc.setTextColor(0, 0, 0);
+
+      // Summary Text
+      doc.setFontSize(11);
+      doc.text(`Ce rapport synthétise les mouvements de stock (Entrées et Sorties) pour la période sélectionnée.`, 14, 50);
+      doc.text(`Les entrées sont comptabilisées en cartons, les sorties en boîtes/unités.`, 14, 56);
 
       // Main Table
-    const tableData = Object.values(productStats)
-      .sort((a, b) => a.name.localeCompare(b.name))
-      .map(p => [
-        p.name,
-        Array.from(p.lots).join(', ') || '-',
-        Number.isInteger(p.cartonsReceived) ? p.cartonsReceived.toString() : p.cartonsReceived.toFixed(1),
-        p.boxesDistributed,
-        '' // Empty column for handwritten notes
-      ]);
+      const tableData = Object.values(productStats)
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map(p => {
+          // Find current stock for this product
+          const stockInfo = currentStock?.find((s: any) => s.name === p.name);
+          let stockDisplay = '-';
+          
+          if (stockInfo) {
+            const cartons = Math.floor((stockInfo as any).current_stock / (stockInfo as any).boxes_per_carton);
+            const loose = (stockInfo as any).current_stock % (stockInfo as any).boxes_per_carton;
+            stockDisplay = `${cartons} ctn${cartons > 1 ? 's' : ''} + ${loose} ${(stockInfo as any).unit}${loose > 1 ? 's' : ''}`;
+          }
 
-    autoTable(doc, {
-      startY: 65,
-      head: [['Désignation Produit', 'N° Lot', 'Entrées (Cartons)', 'Sorties (Boîtes)', 'Corrections ou remarques']],
-      body: tableData,
-      theme: 'grid',
-      headStyles: { 
-        fillColor: [0, 102, 204],
-        textColor: [255, 255, 255],
-        fontStyle: 'bold',
-        halign: 'center',
-        valign: 'middle'
-      },
-      columnStyles: {
-        0: { cellWidth: 50, fontStyle: 'bold' }, // Désignation
-        1: { cellWidth: 35 }, // Lot
-        2: { cellWidth: 25, halign: 'center', textColor: [40, 167, 69] }, // Entrées (Green)
-        3: { cellWidth: 25, halign: 'center', textColor: [255, 102, 0] }, // Sorties (Orange)
-        4: { cellWidth: 55 } // Corrections (Wide for handwriting)
-      },
-      styles: { 
-        fontSize: 10,
-        cellPadding: 3,
-        valign: 'middle',
-        minCellHeight: 12 // Increased height (~3cm visually on paper depending on print scale, but good for handwriting)
-      },
-      alternateRowStyles: {
-        fillColor: [245, 247, 250]
-      },
-      margin: { top: 60 }
-    });
+          return [
+            p.name,
+            Array.from(p.lots).join(', ') || '-',
+            Number.isInteger(p.cartonsReceived) ? p.cartonsReceived.toString() : p.cartonsReceived.toFixed(1),
+            p.boxesDistributed,
+            stockDisplay,
+            '' // Empty column for handwritten notes
+          ];
+        });
 
-    // Footer with Totals
-    const finalY = (doc as any).lastAutoTable.finalY + 10;
-    
-    // Calculate global totals
-    const totalCartons = Object.values(productStats).reduce((sum, p) => sum + p.cartonsReceived, 0);
-    const totalBoxes = Object.values(productStats).reduce((sum, p) => sum + p.boxesDistributed, 0);
+      autoTable(doc, {
+        startY: 65,
+        head: [['Désignation Produit', 'N° Lot', 'Entrées (Cartons)', 'Sorties (Boîtes)', 'Stock Actuel', 'Corrections ou remarques']],
+        body: tableData,
+        theme: 'grid',
+        headStyles: { 
+          fillColor: [227, 0, 27],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+          valign: 'middle'
+        },
+        columnStyles: {
+          0: { cellWidth: 40, fontStyle: 'bold' }, // Désignation
+          1: { cellWidth: 30 }, // Lot
+          2: { cellWidth: 20, halign: 'center', textColor: [0, 0, 0] }, // Entrées (Black)
+          3: { cellWidth: 20, halign: 'center', textColor: [227, 0, 27] }, // Sorties (Red)
+          4: { cellWidth: 35, halign: 'center', fontStyle: 'bold' }, // Stock Actuel
+          5: { cellWidth: 45 } // Corrections (Wide for handwriting)
+        },
+        styles: { 
+          fontSize: 9,
+          cellPadding: 3,
+          valign: 'middle',
+          minCellHeight: 12
+        },
+        alternateRowStyles: {
+          fillColor: [245, 247, 250]
+        },
+        margin: { top: 60 }
+      });
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "bold");
-    doc.text(`Total Cartons Réceptionnés: ${Number.isInteger(totalCartons) ? totalCartons : totalCartons.toFixed(1)}`, 14, finalY);
-    doc.text(`Total Boîtes Distribuées: ${totalBoxes}`, 100, finalY);
+      // Footer with Totals
+      const finalY = (doc as any).lastAutoTable.finalY + 10;
+      
+      // Calculate global totals
+      const totalCartons = Object.values(productStats).reduce((sum, p) => sum + p.cartonsReceived, 0);
+      const totalBoxes = Object.values(productStats).reduce((sum, p) => sum + p.boxesDistributed, 0);
 
-    doc.save(`rapport_spf_${format(currentDate, 'yyyy_MM')}.pdf`);
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "bold");
+      doc.text(`Total Cartons Réceptionnés: ${Number.isInteger(totalCartons) ? totalCartons : totalCartons.toFixed(1)}`, 14, finalY);
+      doc.text(`Total Boîtes Distribuées: ${totalBoxes}`, 100, finalY);
+
+      doc.save(`rapport_spf_${format(currentDate, 'yyyy_MM')}.pdf`);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const exportCSV = () => {
@@ -258,55 +282,22 @@ const Reports = () => {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-green-500">
+        <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-gray-800">
           <p className="text-sm text-gray-500">Total Entrées</p>
           <p className="text-3xl font-bold text-gray-900">{stats.entries}</p>
           <p className="text-xs text-gray-400 mt-1">unités ce mois-ci</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-orange-500">
+        <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-red-600">
           <p className="text-sm text-gray-500">Total Distributions</p>
           <p className="text-3xl font-bold text-gray-900">{stats.distributions}</p>
           <p className="text-xs text-gray-400 mt-1">unités ce mois-ci</p>
         </div>
-        <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-blue-500">
+        <div className="bg-white p-6 rounded-lg shadow-sm border-t-4 border-gray-400">
           <p className="text-sm text-gray-500">Produit le plus actif</p>
           <p className="text-xl font-bold text-gray-900 truncate" title={stats.mostActiveProduct}>
             {stats.mostActiveProduct}
           </p>
         </div>
-      </div>
-
-      {/* Chart */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <h2 className="text-lg font-semibold text-gray-800 mb-4">Évolution journalière</h2>
-        {movements.length === 0 ? (
-          <div className="h-64 flex items-center justify-center text-gray-400">
-            Aucune donnée pour ce mois.
-          </div>
-        ) : (
-          <div className="h-80" style={{ minWidth: 0, minHeight: 320 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={Object.values(movements.reduce((acc: any, m: any) => {
-                  const date = format(parseISO(m.created_at), 'dd/MM');
-                  if (!acc[date]) acc[date] = { date, entrées: 0, distributions: 0 };
-                  if (m.movement_type === 'entree') acc[date].entrées += m.quantity;
-                  else acc[date].distributions += m.quantity;
-                  return acc;
-                }, {}))}
-                margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="entrées" fill="#28A745" name="Entrées" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="distributions" fill="#FF6600" name="Distributions" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        )}
       </div>
     </div>
   );

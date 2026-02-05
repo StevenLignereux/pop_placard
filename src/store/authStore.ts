@@ -37,8 +37,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const initPromise = (async () => {
       try {
         // Get initial session
-        const { data: { session } } = await supabase.auth.getSession();
-        set({ session });
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.warn('Error restoring session:', sessionError.message);
+          // If the refresh token is invalid, clear the session to prevent infinite loops
+          if (sessionError.message.includes('Refresh Token') || sessionError.message.includes('Invalid')) {
+             await supabase.auth.signOut();
+          }
+          set({ session: null });
+        } else {
+          set({ session });
+        }
 
         if (session?.user) {
           // Fetch user profile
@@ -100,8 +110,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         // Store subscription for cleanup if needed (though this store is global)
         (get() as any)._subscription = subscription;
 
-      } catch (error) {
+      } catch (error: any) {
         console.error('Auth initialization error:', error);
+        // Robust error handling: if any critical auth error occurs, ensure we clean up
+        if (error?.message?.includes('Refresh Token') || error?.message?.includes('Invalid')) {
+          await supabase.auth.signOut();
+        }
       } finally {
         set({ loading: false, initialized: true });
         // Clean up the promise tracker
