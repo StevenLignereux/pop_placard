@@ -74,6 +74,8 @@ L'application intègre **Sentry** pour le suivi des erreurs en production.
 ## 📚 Documentation Technique
 - [Migration Performance & TanStack Query](./docs/MIGRATION_PERFORMANCE.md)
 - [Gestion Sécurisée des Administrateurs](./docs/ADMIN_MANAGEMENT.md)
+- [Guide de Déploiement](./docs/DEPLOYMENT.md)
+- [Monitoring & Maintenance](./docs/MONITORING_MAINTENANCE.md)
 
 ## 🔐 Sécurité
 - **Authentification** : Gérée par Supabase Auth.
