@@ -1,17 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { Product } from '../lib/types';
+import { useInfiniteProducts } from '../hooks/useProducts';
 import { Search, ShoppingBag, CheckCircle, AlertTriangle } from 'lucide-react';
 import { useToast } from '../components/Toast';
 import { formatStockDisplay } from '../lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
 
 const StockDistribution = () => {
   const { addToast } = useToast();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [submitting, setSubmitting] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   
+  // Use React Query for infinite scrolling/search
+  const { data: products, isLoading } = useInfiniteProducts(searchTerm);
+
   const [formData, setFormData] = useState({
     product_id: '',
     quantity: 1,
@@ -19,33 +22,9 @@ const StockDistribution = () => {
     notes: '',
   });
 
-  const selectedProduct = products.find(p => p.id === formData.product_id);
+  const selectedProduct = products?.find(p => p.id === formData.product_id);
   const remainingStock = selectedProduct ? selectedProduct.current_stock - formData.quantity : 0;
   const isStockInsufficient = remainingStock < 0;
-
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .gt('current_stock', 0) // Only show products with stock
-        .order('name');
-      
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      addToast('Erreur lors du chargement des produits', 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleProductSelect = (id: string) => {
     setFormData(prev => ({ ...prev, product_id: id }));
@@ -63,7 +42,7 @@ const StockDistribution = () => {
         p_product_id: formData.product_id,
         p_movement_type: 'sortie',
         p_quantity: formData.quantity,
-        p_reference: null, // beneficiary field removed from formData
+        p_reference: null,
         p_notes: formData.notes || null,
       });
 
@@ -80,8 +59,8 @@ const StockDistribution = () => {
       });
       setSearchTerm('');
       
-      // Refresh products
-      fetchProducts();
+      // Invalidate queries to refresh stock in list
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     } catch (error: any) {
       console.error('Error recording distribution:', error);
       addToast('Erreur: ' + error.message, 'error');
@@ -89,10 +68,6 @@ const StockDistribution = () => {
       setSubmitting(false);
     }
   };
-
-  const filteredProducts = products.filter(p => 
-    p.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -120,12 +95,12 @@ const StockDistribution = () => {
           </div>
 
           <div className="border rounded-md max-h-96 overflow-y-auto divide-y">
-            {loading ? (
+            {isLoading ? (
               <div className="p-4 text-center">Chargement...</div>
-            ) : filteredProducts.length === 0 ? (
+            ) : !products || products.length === 0 ? (
               <div className="p-4 text-center text-gray-500">Aucun produit disponible en stock.</div>
             ) : (
-              filteredProducts.map((product) => (
+              products.map((product) => (
                 <button
                   key={product.id}
                   type="button"

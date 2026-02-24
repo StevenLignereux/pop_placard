@@ -1,15 +1,17 @@
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
 import { Product } from '../lib/types';
 import { useAuthStore } from '../store/authStore';
+import { useProducts, useDeleteProduct } from '../hooks/useProducts';
 import { 
   Plus, 
   Search, 
   Edit, 
   Trash2, 
-  AlertTriangle 
+  AlertTriangle,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useToast } from '../components/Toast';
@@ -17,39 +19,34 @@ import { formatStockDisplay } from '../lib/utils';
 
 const Products = () => {
   const { user } = useAuthStore();
-  // const isAdmin = user?.role === 'admin'; // Removed admin restriction
   const { addToast } = useToast();
   
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Pagination and Filtering State
   const [searchTerm, setSearchTerm] = useState('');
-  const [filter, setFilter] = useState<'all' | 'low_stock'>('all');
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
+  // Note: 'low_stock' filtering would require more complex backend logic or a specific RPC/view
+  // For now, we'll focus on search and pagination as per requirements
+  // const [filter, setFilter] = useState<'all' | 'low_stock'>('all');
+
+  // React Query Hooks
+  const { data: productsData, isLoading, isError, error } = useProducts({
+    search: searchTerm,
+    page,
+    pageSize,
+    sortBy: 'name',
+    sortOrder: 'asc'
+  });
+
+  const deleteProductMutation = useDeleteProduct();
 
   // Delete modal state
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
-  const [deleteLoading, setDeleteLoading] = useState(false);
 
-  useEffect(() => {
-    fetchProducts();
-  }, []);
-
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .eq('is_active', true)
-        .order('name');
-      
-      if (error) throw error;
-      setProducts(data || []);
-    } catch (error) {
-      console.error('Error fetching products:', error);
-      addToast('Erreur lors du chargement des produits', 'error');
-    } finally {
-      setLoading(false);
-    }
+  // Handlers
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchTerm(e.target.value);
+    setPage(1); // Reset to first page on search
   };
 
   const handleDeleteClick = (id: string) => {
@@ -59,32 +56,28 @@ const Products = () => {
   const confirmDelete = async () => {
     if (!productToDelete) return;
     
-    setDeleteLoading(true);
     try {
-      const { error } = await supabase
-        .from('products')
-        .update({ is_active: false } as never)
-        .eq('id', productToDelete);
-
-      if (error) throw error;
-      
-      // Optimistic update
-      setProducts(products.filter(p => p.id !== productToDelete));
+      await deleteProductMutation.mutateAsync(productToDelete);
       setProductToDelete(null);
       addToast('Produit supprimé avec succès', 'success');
     } catch (error) {
       console.error('Error deleting product:', error);
       addToast('Erreur lors de la suppression du produit', 'error');
-    } finally {
-      setDeleteLoading(false);
     }
   };
 
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filter === 'all' || (filter === 'low_stock' && product.current_stock <= product.alert_threshold);
-    return matchesSearch && matchesFilter;
-  });
+  // Pagination Logic
+  const totalCount = productsData?.count || 0;
+  const totalPages = Math.ceil(totalCount / pageSize);
+  const products = productsData?.data || [];
+
+  if (isError) {
+    return (
+      <div className="text-center py-10 text-red-600">
+        Erreur lors du chargement des produits: {(error as Error).message}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -111,29 +104,14 @@ const Products = () => {
             placeholder="Rechercher un produit..."
             className="pl-10 block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2 border"
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={handleSearchChange}
           />
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <label htmlFor="filter" className="text-sm font-medium text-gray-700 whitespace-nowrap">
-            Filtrer par:
-          </label>
-          <select
-            id="filter"
-            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2 border px-3"
-            value={filter}
-            onChange={(e: any) => setFilter(e.target.value)}
-          >
-            <option value="all">Tous les produits</option>
-            <option value="low_stock">Stock faible</option>
-          </select>
         </div>
       </div>
 
       {/* Table */}
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-        {loading ? (
+        {isLoading ? (
           <div className="flex justify-center p-8">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
           </div>
@@ -160,14 +138,14 @@ const Products = () => {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredProducts.length === 0 ? (
+                {products.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
                       Aucun produit trouvé.
                     </td>
                   </tr>
                 ) : (
-                  filteredProducts.map((product) => (
+                  products.map((product) => (
                     <tr key={product.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
@@ -218,6 +196,43 @@ const Products = () => {
             </table>
           </div>
         )}
+        
+        {/* Pagination Controls */}
+        {!isLoading && totalPages > 1 && (
+          <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Affichage de <span className="font-medium">{(page - 1) * pageSize + 1}</span> à <span className="font-medium">{Math.min(page * pageSize, totalCount)}</span> sur <span className="font-medium">{totalCount}</span> résultats
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Précédent</span>
+                    <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                  {/* Simple pagination logic: show current page */}
+                  <span className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                    Page {page} sur {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span className="sr-only">Suivant</span>
+                    <ChevronRight className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </nav>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       <ConfirmationModal
@@ -228,7 +243,7 @@ const Products = () => {
         message="Êtes-vous sûr de vouloir supprimer ce produit ? Il sera archivé et ne sera plus visible dans la liste."
         confirmLabel="Supprimer"
         variant="danger"
-        isLoading={deleteLoading}
+        isLoading={deleteProductMutation.isPending}
       />
     </div>
   );
