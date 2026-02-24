@@ -19,7 +19,7 @@ const StockEntry = () => {
   });
 
   const selectedProduct = products.find(p => p.id === formData.product_id);
-  const totalUnits = selectedProduct ? formData.cartons * selectedProduct.boxes_per_carton : 0;
+  const totalUnits = selectedProduct ? (formData.cartons || 0) * selectedProduct.boxes_per_carton : 0;
 
   useEffect(() => {
     fetchProducts();
@@ -171,8 +171,11 @@ const StockEntry = () => {
                     min="1"
                     required
                     className="block w-full rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary sm:text-sm py-2 border px-3"
-                    value={formData.cartons}
-                    onChange={(e) => setFormData(prev => ({ ...prev, cartons: parseInt(e.target.value) || 1 }))}
+                    value={formData.cartons === 0 ? '' : formData.cartons}
+                    onChange={(e) => {
+                      const val = e.target.value === '' ? 0 : parseInt(e.target.value);
+                      setFormData(prev => ({ ...prev, cartons: isNaN(val) ? 0 : val }));
+                    }}
                   />
                   <div className="text-sm font-medium text-gray-500 whitespace-nowrap">
                     = {totalUnits} {selectedProduct.unit}(s)
