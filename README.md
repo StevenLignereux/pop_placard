@@ -73,6 +73,12 @@ L'application intègre **Sentry** pour le suivi des erreurs en production.
 
 ## 📚 Documentation Technique
 - [Migration Performance & TanStack Query](./docs/MIGRATION_PERFORMANCE.md)
+- [Gestion Sécurisée des Administrateurs](./docs/ADMIN_MANAGEMENT.md)
+
+## 🔐 Sécurité
+- **Authentification** : Gérée par Supabase Auth.
+- **Rôles** : L'attribution automatique du rôle `admin` est désactivée. Voir la [procédure de gestion](./docs/ADMIN_MANAGEMENT.md).
+- **Audit** : Toutes les modifications de rôles sont tracées dans `audit_logs`.
 
 ## 🤝 Contribution
 1. Créer une branche pour votre fonctionnalité (`git checkout -b feat/ma-feature`).
