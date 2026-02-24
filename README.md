@@ -1,57 +1,81 @@
-# React + TypeScript + Vite
+# Pop Placard - Gestion de Stocks Secours Populaire
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Application de gestion de stocks pour le Secours Populaire Français, développée avec React, TypeScript, Vite, Supabase et TanStack Query.
 
-Currently, two official plugins are available:
+## 🚀 Fonctionnalités Clés
+- **Gestion des Produits** : Création, modification, archivage, alertes de stock.
+- **Mouvements de Stock** : Entrées (réceptions) et Sorties (distributions) tracées.
+- **Rapports** : Génération de PDF mensuels, statistiques en temps réel.
+- **Sécurité** : Authentification, RLS (Row Level Security), Audit Logs.
+- **Performance** : Pagination serveur, mise en cache, chargement optimisé.
+- **Robustesse** : Gestion des erreurs globale (Error Boundary) et monitoring.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🛠️ Stack Technique
+- **Frontend** : React 18, TypeScript, Tailwind CSS
+- **State Management** : Zustand (Auth), TanStack Query (Server State)
+- **Backend** : Supabase (PostgreSQL, Auth, Edge Functions)
+- **Testing** : Vitest, React Testing Library
+- **Monitoring** : Sentry
 
-## Expanding the ESLint configuration
+## 🚦 Prérequis
+- Node.js >= 18
+- Compte Supabase
+- Compte Sentry (pour le monitoring en production)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 📦 Installation
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+1. Cloner le projet :
+   ```bash
+   git clone https://github.com/votre-org/pop-placard.git
+   cd pop-placard
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Installer les dépendances :
+   ```bash
+   npm install
+   ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+3. Configurer les variables d'environnement :
+   Créer un fichier `.env` à la racine (voir `.env.example` s'il existe) :
+   ```env
+   VITE_SUPABASE_URL=votre_url_supabase
+   VITE_SUPABASE_ANON_KEY=votre_cle_anon
+   VITE_SENTRY_DSN=votre_dsn_sentry
+   ```
 
-export default tseslint.config({
-  extends: [
-    // other configs...
-    // Enable lint rules for React
-    reactX.configs['recommended-typescript'],
-    // Enable lint rules for React DOM
-    reactDom.configs.recommended,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+4. Lancer le serveur de développement :
+   ```bash
+   npm run dev
+   ```
+
+## 🧪 Tests
+L'application dispose d'une suite de tests unitaires et d'intégration.
+
+- Lancer tous les tests : `npm run test`
+- Lancer avec rapport de couverture : `npm run test:coverage`
+
+## 🚨 Monitoring & Crash Reporting (Sentry)
+L'application intègre **Sentry** pour le suivi des erreurs en production.
+
+### En cas de crash utilisateur (Écran rouge) :
+1. L'utilisateur voit un écran "Une erreur est survenue" avec un **Code erreur support** (ex: `CRASH-L4K2J5`).
+2. Ce code correspond à un événement dans Sentry, mais l'erreur est surtout identifiable par le contexte et la stack trace envoyée automatiquement.
+3. Pour retrouver l'erreur dans Sentry :
+   - Allez dans le projet `pop-placard`.
+   - Filtrez par `error.type` ou recherchez les erreurs récentes.
+   - Les erreurs interceptées par l'Error Boundary ont le tag `mechanism: error_boundary`.
+
+### Configuration Sentry :
+- Le DSN est défini dans `src/sentry.ts` via `import.meta.env.VITE_SENTRY_DSN`.
+- En développement (`npm run dev`), le taux d'échantillonnage (`tracesSampleRate`) est de 100%.
+- En production (`npm run build`), il est réduit à 10% pour les performances.
+- Les données personnelles (IP) sont anonymisées avant envoi.
+
+## 📚 Documentation Technique
+- [Migration Performance & TanStack Query](./docs/MIGRATION_PERFORMANCE.md)
+
+## 🤝 Contribution
+1. Créer une branche pour votre fonctionnalité (`git checkout -b feat/ma-feature`).
+2. Commiter vos changements (`git commit -m 'feat: ajout de ma feature'`).
+3. Pousser vers la branche (`git push origin feat/ma-feature`).
+4. Ouvrir une Pull Request.
