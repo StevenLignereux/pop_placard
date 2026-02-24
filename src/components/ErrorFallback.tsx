@@ -27,7 +27,7 @@ export const ErrorFallback: React.FC<FallbackProps> = ({ error }) => {
         {/* Technical details (hidden in production usually, but useful for now or if dev) */}
         <details className="text-left bg-gray-50 p-3 rounded text-xs text-gray-500 mb-6 overflow-auto max-h-32 border border-gray-200">
           <summary className="cursor-pointer font-medium mb-1 hover:text-gray-700">Détails techniques</summary>
-          <pre className="whitespace-pre-wrap font-mono">{error.message}</pre>
+          <pre className="whitespace-pre-wrap font-mono">{(error as Error).message}</pre>
         </details>
 
         <div className="bg-blue-50 border border-blue-100 rounded-md p-3 mb-6">

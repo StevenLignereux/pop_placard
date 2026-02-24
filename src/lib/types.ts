@@ -51,6 +51,14 @@ export interface AuditLog {
   created_at: string;
 }
 
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
+
 export type Database = {
   public: {
     Tables: {
@@ -58,23 +66,45 @@ export type Database = {
         Row: User;
         Insert: Omit<User, 'created_at' | 'updated_at'>;
         Update: Partial<Omit<User, 'created_at' | 'updated_at'>>;
+        Relationships: [];
       };
       products: {
         Row: Product;
         Insert: Omit<Product, 'id' | 'created_at' | 'updated_at'>;
         Update: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>;
+        Relationships: [];
       };
       stock_movements: {
         Row: StockMovement;
         Insert: Omit<StockMovement, 'id' | 'created_at' | 'product' | 'user'>;
         Update: never; // Stock movements should generally not be updated after creation
+        Relationships: [
+          {
+            foreignKeyName: "stock_movements_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_movements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          }
+        ];
       };
       audit_logs: {
         Row: AuditLog;
         Insert: Omit<AuditLog, 'id' | 'created_at'>;
         Update: never;
+        Relationships: [];
       };
     };
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
       record_stock_movement: {
         Args: {
@@ -87,5 +117,11 @@ export type Database = {
         Returns: string; // Returns UUID of the created movement
       };
     };
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   };
 };
