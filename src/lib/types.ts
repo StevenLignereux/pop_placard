@@ -42,6 +42,15 @@ export interface StockMovement {
   user?: User;
 }
 
+export interface AuditLog {
+  id: string;
+  user_id: string;
+  action: string;
+  details: any;
+  ip_address: string;
+  created_at: string;
+}
+
 export type Database = {
   public: {
     Tables: {
@@ -60,6 +69,11 @@ export type Database = {
         Insert: Omit<StockMovement, 'id' | 'created_at' | 'product' | 'user'>;
         Update: never; // Stock movements should generally not be updated after creation
       };
+      audit_logs: {
+        Row: AuditLog;
+        Insert: Omit<AuditLog, 'id' | 'created_at'>;
+        Update: never;
+      };
     };
     Functions: {
       record_stock_movement: {
@@ -67,10 +81,10 @@ export type Database = {
           p_product_id: string;
           p_movement_type: string;
           p_quantity: number;
-          p_reference?: string | null;
-          p_notes?: string | null;
+          p_reference: string | null; // Changed to match exact signature (not optional)
+          p_notes: string | null; // Changed to match exact signature (not optional)
         };
-        Returns: string;
+        Returns: string; // Returns UUID of the created movement
       };
     };
   };

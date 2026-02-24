@@ -32,7 +32,7 @@ describe('User Role Security', () => {
       session: null
     };
     
-    (supabase.auth.signUp as any).mockResolvedValue({ data: signUpData, error: null });
+    (supabase.auth.signUp as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ data: signUpData, error: null });
 
     // Et qu'on récupère son profil
     const mockProfileResponse = {
@@ -46,7 +46,7 @@ describe('User Role Security', () => {
     const mockSingle = vi.fn().mockResolvedValue(mockProfileResponse);
     const mockEq = vi.fn().mockReturnValue({ single: mockSingle });
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
-    (supabase.from as any).mockReturnValue({ select: mockSelect });
+    (supabase.from as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ select: mockSelect });
 
     // Action
     const { data } = await supabase.auth.signUp({ 

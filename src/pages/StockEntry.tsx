@@ -54,7 +54,6 @@ const StockEntry = () => {
     try {
       setSubmitting(true);
       
-      // @ts-ignore
       const { error } = await supabase.rpc('record_stock_movement', {
         p_product_id: formData.product_id,
         p_movement_type: 'entree',

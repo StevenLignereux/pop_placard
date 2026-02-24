@@ -35,13 +35,13 @@ describe('authStore', () => {
   });
 
   it('should set session', () => {
-    const session: any = { user: { id: '123' } };
+    const session = { user: { id: '123' } } as unknown as import('@supabase/supabase-js').Session;
     useAuthStore.getState().setSession(session);
     expect(useAuthStore.getState().session).toEqual(session);
   });
 
   it('should set user', () => {
-    const user: any = { id: '123', name: 'Test User' };
+    const user = { id: '123', name: 'Test User' } as unknown as import('../lib/types').User;
     useAuthStore.getState().setUser(user);
     expect(useAuthStore.getState().user).toEqual(user);
   });
@@ -57,13 +57,13 @@ describe('authStore', () => {
 
   it('should initialize correctly when no session', async () => {
     // Mock getSession to return no session
-    (supabase.auth.getSession as any).mockResolvedValue({
+    (supabase.auth.getSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: { session: null },
       error: null,
     });
 
     // Mock onAuthStateChange
-    (supabase.auth.onAuthStateChange as any).mockReturnValue({
+    (supabase.auth.onAuthStateChange as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
 
@@ -76,11 +76,11 @@ describe('authStore', () => {
   });
 
   it('should initialize correctly with session and user', async () => {
-    const mockSession: any = { user: { id: 'user-123' } };
+    const mockSession = { user: { id: 'user-123' } } as unknown as import('@supabase/supabase-js').Session;
     const mockUser = { id: 'user-123', name: 'Test User' };
 
     // Mock getSession
-    (supabase.auth.getSession as any).mockResolvedValue({
+    (supabase.auth.getSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: { session: mockSession },
       error: null,
     });
@@ -89,10 +89,10 @@ describe('authStore', () => {
     const mockSingle = vi.fn().mockResolvedValue({ data: mockUser, error: null });
     const mockEq = vi.fn().mockReturnValue({ single: mockSingle });
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
-    (supabase.from as any).mockReturnValue({ select: mockSelect });
+    (supabase.from as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ select: mockSelect });
 
     // Mock onAuthStateChange
-    (supabase.auth.onAuthStateChange as any).mockReturnValue({
+    (supabase.auth.onAuthStateChange as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
 
@@ -111,13 +111,13 @@ describe('authStore', () => {
 
   it('should handle session restoration error (invalid refresh token)', async () => {
     // Mock getSession error
-    (supabase.auth.getSession as any).mockResolvedValue({
+    (supabase.auth.getSession as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
       data: { session: null },
       error: { message: 'Invalid Refresh Token' },
     });
 
     // Mock onAuthStateChange
-    (supabase.auth.onAuthStateChange as any).mockReturnValue({
+    (supabase.auth.onAuthStateChange as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
       data: { subscription: { unsubscribe: vi.fn() } },
     });
 

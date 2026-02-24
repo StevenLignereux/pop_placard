@@ -45,7 +45,7 @@ describe('StockEntry', () => {
     const mockOrder = vi.fn().mockResolvedValue({ data: mockProducts, error: null });
     const mockEq = vi.fn().mockReturnValue({ order: mockOrder });
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
-    (supabase.from as any).mockReturnValue({ select: mockSelect });
+    (supabase.from as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ select: mockSelect });
   });
 
   it('renders correctly and loads products', async () => {
@@ -108,7 +108,7 @@ describe('StockEntry', () => {
   it('submits form correctly', async () => {
     const user = userEvent.setup();
     // Mock successful RPC call
-    (supabase.rpc as any).mockResolvedValue({ data: null, error: null });
+    (supabase.rpc as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ data: null, error: null });
 
     render(<StockEntry />);
     

@@ -52,10 +52,10 @@ const Users = () => {
     }
   };
 
-  const logAudit = async (action: string, details: any) => {
+  const logAudit = async (action: string, details: Record<string, unknown>) => {
     try {
       await supabase.from('audit_logs').insert({
-        user_id: currentUser?.id,
+        user_id: currentUser?.id as string,
         action,
         details,
         ip_address: 'client-side' // We can't easily get IP here, but that's fine
@@ -92,13 +92,13 @@ const Users = () => {
         const newRole = user.role === 'admin' ? 'volunteer' : 'admin';
         const { error } = await supabase.from('users').update({ role: newRole }).eq('id', user.id);
         if (error) throw error;
-        await logAudit('update_role', { target_user: user.email, old_role: user.role, new_role: newRole });
+        await logAudit('update_role', { target_user: user.email, user_id: user.id, old_role: user.role, new_role: newRole });
         setUsers(users.map(u => u.id === user.id ? { ...u, role: newRole } : u));
         addToast(`Rôle mis à jour avec succès : ${user.name} est maintenant ${newRole === 'admin' ? 'Administrateur' : 'Bénévole'}`, 'success');
       } else {
         const { error } = await supabase.from('users').update({ is_active: !user.is_active }).eq('id', user.id);
         if (error) throw error;
-        await logAudit('update_status', { target_user: user.email, new_status: !user.is_active });
+        await logAudit('update_status', { target_user: user.email, user_id: user.id, new_status: !user.is_active });
         setUsers(users.map(u => u.id === user.id ? { ...u, is_active: !u.is_active } : u));
         addToast(`Statut mis à jour avec succès : Le compte de ${user.name} est ${!user.is_active ? 'activé' : 'désactivé'}`, 'success');
       }
@@ -120,7 +120,14 @@ const Users = () => {
       // Create a temporary client to sign up the user without logging out the admin
       const tempSupabase = createClient(
         import.meta.env.VITE_SUPABASE_URL,
-        import.meta.env.VITE_SUPABASE_ANON_KEY
+        import.meta.env.VITE_SUPABASE_ANON_KEY,
+        {
+          auth: {
+            autoRefreshToken: false,
+            persistSession: false,
+            detectSessionInUrl: false
+          }
+        }
       );
 
       const { data, error } = await tempSupabase.auth.signUp({
@@ -153,9 +160,10 @@ const Users = () => {
         addToast('Utilisateur créé avec succès !', 'success');
       }
 
-    } catch (err: any) {
-      console.error('Error creating user:', err);
-      setCreateError(err.message || "Erreur lors de la création de l'utilisateur");
+    } catch (err: unknown) {
+      const error = err as Error;
+      console.error('Error creating user:', error);
+      setCreateError(error.message || "Erreur lors de la création de l'utilisateur");
       addToast("Erreur lors de la création de l'utilisateur", 'error');
     } finally {
       setCreateLoading(false);

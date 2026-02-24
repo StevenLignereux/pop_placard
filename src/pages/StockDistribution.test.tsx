@@ -49,7 +49,7 @@ describe('StockDistribution', () => {
     const mockGt = vi.fn().mockReturnValue({ order: mockOrder });
     const mockEq = vi.fn().mockReturnValue({ gt: mockGt });
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
-    (supabase.from as any).mockReturnValue({ select: mockSelect });
+    (supabase.from as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ select: mockSelect });
   });
 
   it('renders correctly and loads products', async () => {
@@ -91,7 +91,7 @@ describe('StockDistribution', () => {
 
   it('submits distribution correctly', async () => {
     const user = userEvent.setup();
-    (supabase.rpc as any).mockResolvedValue({ data: null, error: null });
+    (supabase.rpc as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ data: null, error: null });
 
     render(<StockDistribution />);
     
