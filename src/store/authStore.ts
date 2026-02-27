@@ -62,10 +62,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           
           if (error) {
             console.error('Error fetching user profile:', error);
+            // Don't sign out on network error, just don't set user
           } else if (userProfile) {
             set({ user: userProfile });
           } else {
-            console.warn('User authenticated but no profile found in public.users');
+            console.error('Security Alert: User authenticated in Auth but no profile found in public.users. Forcing sign out.');
+            await supabase.auth.signOut();
+            set({ session: null, user: null });
+            return;
           }
         }
 
@@ -103,7 +107,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
               if (userProfile) {
                 set({ user: userProfile });
               } else {
-                console.warn('User authenticated but no profile found in public.users');
+                console.error('Security Alert: User authenticated in Auth but no profile found in public.users. Forcing sign out.');
+                await supabase.auth.signOut();
+                set({ session: null, user: null });
+                return;
               }
             } catch (error) {
               console.error('Error refreshing user profile:', error);
