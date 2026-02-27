@@ -58,10 +58,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             .from('users')
             .select('*')
             .eq('id', session.user.id)
-            .single();
+            .maybeSingle();
           
-          if (!error && userProfile) {
+          if (error) {
+            console.error('Error fetching user profile:', error);
+          } else if (userProfile) {
             set({ user: userProfile });
+          } else {
+            console.warn('User authenticated but no profile found in public.users');
           }
         }
 
@@ -93,10 +97,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
                 .from('users')
                 .select('*')
                 .eq('id', session.user.id)
-                .single();
+                .maybeSingle();
               
               if (error) throw error;
-              set({ user: userProfile });
+              if (userProfile) {
+                set({ user: userProfile });
+              } else {
+                console.warn('User authenticated but no profile found in public.users');
+              }
             } catch (error) {
               console.error('Error refreshing user profile:', error);
             } finally {
