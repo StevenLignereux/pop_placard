@@ -17,12 +17,6 @@ describe('User Role Security', () => {
     // Idéalement, ce test devrait être un test d'intégration E2E sur une base de données de test.
     // Ici, nous documentons et validons la logique attendue via des mocks pour la CI frontend.
 
-    const mockNewUser = {
-      id: 'new-user-123',
-      email: 'hacker@example.com',
-      role: 'volunteer', // Le trigger force 'volunteer'
-    };
-
     // Simulation de la réponse après inscription (Trigger exécuté côté DB)
     // Nous vérifions que notre logique cliente n'attend pas ou ne force pas 'admin'
     

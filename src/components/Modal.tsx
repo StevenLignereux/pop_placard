@@ -1,8 +1,7 @@
 
 import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
-import { clsx } from 'clsx';
-import { twMerge } from 'tailwind-merge';
+import { cn } from '../lib/utils';
 
 interface ModalProps {
   isOpen: boolean;
@@ -12,10 +11,6 @@ interface ModalProps {
   footer?: React.ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   description?: string;
-}
-
-export function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
 }
 
 const Modal = ({ 
@@ -48,13 +43,6 @@ const Modal = ({
       document.body.style.overflow = 'unset';
     };
   }, [isOpen, onClose]);
-
-  // Handle Click Outside
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
-      onClose();
-    }
-  };
 
   if (!isOpen) return null;
 

@@ -1,15 +1,36 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { FileText, Download, Calendar } from 'lucide-react';
-import { format, startOfMonth, endOfMonth, parseISO } from 'date-fns';
+import { format, startOfMonth, endOfMonth } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+interface MovementWithProduct {
+  id: string;
+  created_at: string;
+  quantity: number;
+  movement_type: 'entree' | 'sortie';
+  reference?: string;
+  notes?: string;
+  product?: {
+    name: string;
+    unit: string;
+    boxes_per_carton: number;
+  };
+}
+
+interface StockProduct {
+  name: string;
+  current_stock: number;
+  unit: string;
+  boxes_per_carton: number;
+}
+
 const Reports = () => {
   const [loading, setLoading] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [movements, setMovements] = useState<any[]>([]);
+  const [movements, setMovements] = useState<MovementWithProduct[]>([]);
   const [stats, setStats] = useState({
     entries: 0,
     distributions: 0,
@@ -17,52 +38,52 @@ const Reports = () => {
   });
 
   useEffect(() => {
+    const fetchReportData = async () => {
+      try {
+        setLoading(true);
+        const start = startOfMonth(currentDate).toISOString();
+        const end = endOfMonth(currentDate).toISOString();
+  
+        const { data, error } = await supabase
+          .from('stock_movements')
+          .select('*, product:products(name, unit, boxes_per_carton)')
+          .gte('created_at', start)
+          .lte('created_at', end)
+          .order('created_at', { ascending: true });
+  
+        if (error) throw error;
+        setMovements((data as unknown as MovementWithProduct[]) || []);
+  
+        // Calculate stats
+        let entries = 0;
+        let distributions = 0;
+        const productCounts: Record<string, number> = {};
+  
+        data?.forEach((m: any) => {
+          if (m.movement_type === 'entree') entries += m.quantity;
+          else distributions += m.quantity;
+  
+          const productName = m.product?.name || 'Inconnu';
+          productCounts[productName] = (productCounts[productName] || 0) + m.quantity;
+        });
+  
+        const mostActive = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0];
+  
+        setStats({
+          entries,
+          distributions,
+          mostActiveProduct: mostActive ? mostActive[0] : '-',
+        });
+  
+      } catch (error) {
+        console.error('Error fetching report data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchReportData();
   }, [currentDate]);
-
-  const fetchReportData = async () => {
-    try {
-      setLoading(true);
-      const start = startOfMonth(currentDate).toISOString();
-      const end = endOfMonth(currentDate).toISOString();
-
-      const { data, error } = await supabase
-        .from('stock_movements')
-        .select('*, product:products(name, unit, boxes_per_carton)')
-        .gte('created_at', start)
-        .lte('created_at', end)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      setMovements(data || []);
-
-      // Calculate stats
-      let entries = 0;
-      let distributions = 0;
-      const productCounts: Record<string, number> = {};
-
-      data?.forEach((m: any) => {
-        if (m.movement_type === 'entree') entries += m.quantity;
-        else distributions += m.quantity;
-
-        const productName = m.product?.name || 'Inconnu';
-        productCounts[productName] = (productCounts[productName] || 0) + m.quantity;
-      });
-
-      const mostActive = Object.entries(productCounts).sort((a, b) => b[1] - a[1])[0];
-
-      setStats({
-        entries,
-        distributions,
-        mostActiveProduct: mostActive ? mostActive[0] : '-',
-      });
-
-    } catch (error) {
-      console.error('Error fetching report data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const generatePDF = async () => {
     try {
@@ -140,13 +161,13 @@ const Reports = () => {
         .sort((a, b) => a.name.localeCompare(b.name))
         .map(p => {
           // Find current stock for this product
-          const stockInfo = currentStock?.find((s: any) => s.name === p.name);
+          const stockInfo = (currentStock as unknown as StockProduct[])?.find(s => s.name === p.name);
           let stockDisplay = '-';
           
           if (stockInfo) {
-            const cartons = Math.floor((stockInfo as any).current_stock / (stockInfo as any).boxes_per_carton);
-            const loose = (stockInfo as any).current_stock % (stockInfo as any).boxes_per_carton;
-            stockDisplay = `${cartons} ctn${cartons > 1 ? 's' : ''} + ${loose} ${(stockInfo as any).unit}${loose > 1 ? 's' : ''}`;
+            const cartons = Math.floor(stockInfo.current_stock / stockInfo.boxes_per_carton);
+            const loose = stockInfo.current_stock % stockInfo.boxes_per_carton;
+            stockDisplay = `${cartons} ctn${cartons > 1 ? 's' : ''} + ${loose} ${stockInfo.unit}${loose > 1 ? 's' : ''}`;
           }
 
           return [
@@ -264,15 +285,19 @@ const Reports = () => {
       <div className="bg-white rounded-lg shadow-sm p-4 flex flex-wrap gap-4">
         <button
           onClick={generatePDF}
-          disabled={movements.length === 0}
+          disabled={loading || movements.length === 0}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50"
         >
-          <FileText className="-ml-1 mr-2 h-5 w-5" />
-          Générer rapport PDF
+          {loading ? 'Génération...' : (
+            <>
+              <FileText className="-ml-1 mr-2 h-5 w-5" />
+              Générer rapport PDF
+            </>
+          )}
         </button>
         <button
           onClick={exportCSV}
-          disabled={movements.length === 0}
+          disabled={loading || movements.length === 0}
           className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50"
         >
           <Download className="-ml-1 mr-2 h-5 w-5" />

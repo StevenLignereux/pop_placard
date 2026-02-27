@@ -1,8 +1,6 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Product } from '../lib/types';
-import { useAuthStore } from '../store/authStore';
 import { useProducts, useDeleteProduct } from '../hooks/useProducts';
 import { 
   Plus, 
@@ -18,7 +16,6 @@ import { useToast } from '../components/Toast';
 import { formatStockDisplay } from '../lib/utils';
 
 const Products = () => {
-  const { user } = useAuthStore();
   const { addToast } = useToast();
   
   // Pagination and Filtering State

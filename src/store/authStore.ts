@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Session } from '@supabase/supabase-js';
+import { Session, Subscription } from '@supabase/supabase-js';
 import { User } from '../lib/types';
 import { supabase } from '../lib/supabase';
 
@@ -13,6 +13,8 @@ interface AuthState {
   setLoading: (loading: boolean) => void;
   initialize: () => Promise<void>;
   signOut: () => Promise<void>;
+  _initPromise?: Promise<void>;
+  _subscription?: Subscription;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -30,8 +32,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     
     // Check if initialization is already in progress
     const state = get();
-    if ((state as any)._initPromise) {
-      return (state as any)._initPromise;
+    if (state._initPromise) {
+      return state._initPromise;
     }
 
     const initPromise = (async () => {
@@ -108,7 +110,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         });
 
         // Store subscription for cleanup if needed (though this store is global)
-        (get() as any)._subscription = subscription;
+        set({ _subscription: subscription });
 
       } catch (error: any) {
         console.error('Auth initialization error:', error);
@@ -119,12 +121,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       } finally {
         set({ loading: false, initialized: true });
         // Clean up the promise tracker
-        delete (get() as any)._initPromise;
+        // We can't delete from state in Zustand easily without set, but we can set it to undefined
+        set({ _initPromise: undefined });
       }
     })();
 
     // Store the promise
-    (get() as any)._initPromise = initPromise;
+    set({ _initPromise: initPromise });
     return initPromise;
   },
 

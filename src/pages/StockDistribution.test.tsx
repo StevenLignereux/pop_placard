@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import StockDistribution from './StockDistribution';
 import { supabase } from '../lib/supabase';
 
@@ -40,20 +41,49 @@ const mockProducts = [
   },
 ];
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+});
+
+const renderWithClient = (ui: React.ReactElement) => {
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>
+  );
+};
+
 describe('StockDistribution', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    queryClient.clear();
     
     // Setup default mock response for products
-    const mockOrder = vi.fn().mockResolvedValue({ data: mockProducts, error: null });
-    const mockGt = vi.fn().mockReturnValue({ order: mockOrder });
-    const mockEq = vi.fn().mockReturnValue({ gt: mockGt });
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq });
-    (supabase.from as unknown as ReturnType<typeof vi.fn>).mockReturnValue({ select: mockSelect });
+    const mockData = { data: mockProducts, error: null };
+    
+    // Create a chainable mock object
+    const mockChain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      gt: vi.fn().mockReturnThis(),
+      ilike: vi.fn().mockReturnThis(),
+      order: vi.fn().mockReturnThis(),
+      limit: vi.fn().mockResolvedValue(mockData),
+      range: vi.fn().mockResolvedValue(mockData),
+      single: vi.fn().mockResolvedValue({ data: mockProducts[0], error: null }),
+      insert: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+    };
+
+    (supabase.from as unknown as ReturnType<typeof vi.fn>).mockReturnValue(mockChain);
   });
 
   it('renders correctly and loads products', async () => {
-    render(<StockDistribution />);
+    renderWithClient(<StockDistribution />);
     
     expect(screen.getByText('Enregistrement des Distributions')).toBeInTheDocument();
     expect(screen.getByText('1. Sélectionner un produit')).toBeInTheDocument();
@@ -66,7 +96,7 @@ describe('StockDistribution', () => {
 
   it('validates stock availability', async () => {
     const user = userEvent.setup();
-    render(<StockDistribution />);
+    renderWithClient(<StockDistribution />);
     
     await waitFor(() => {
       fireEvent.click(screen.getByText('Pâtes'));
@@ -93,7 +123,7 @@ describe('StockDistribution', () => {
     const user = userEvent.setup();
     (supabase.rpc as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ data: null, error: null });
 
-    render(<StockDistribution />);
+    renderWithClient(<StockDistribution />);
     
     await waitFor(() => {
       fireEvent.click(screen.getByText('Pâtes'));
