@@ -29,6 +29,18 @@ Dans la fenêtre "Gérer les lots", la liste des lots actifs pour le produit est
 2.  Dans la liste des lots existants, cliquez sur l'icône de **corbeille** à côté du lot à supprimer.
 3.  Le lot est immédiatement retiré de la liste.
 
+## Impact sur les Rapports
+
+Les rapports mensuels (PDF et CSV) ont été mis à jour pour refléter cette nouvelle gestion :
+
+*   **Colonne "N° Lot"** : Cette colonne liste désormais l'ensemble des lots **actifs** définis dans la fiche produit (via l'onglet Produits), au lieu de reprendre la référence saisie lors de l'entrée de stock.
+*   **Colonne "Référence" (CSV)** : Continue d'afficher la référence saisie lors de l'entrée de stock (ex: numéro de Bon de Livraison).
+
+## Transition et Bonnes Pratiques
+
+*   **Saisie des Entrées** : Le champ "Référence" dans le formulaire d'entrée de stock doit désormais être utilisé préférentiellement pour le numéro de Bon de Livraison (BL) ou une référence fournisseur, et non plus pour le numéro de lot.
+*   **Création de Lots** : Pensez à créer les nouveaux numéros de lots dans l'onglet **Produits** dès leur réception physique, afin qu'ils apparaissent correctement dans les rapports.
+
 ## Règles de gestion
 
 *   **Unicité** : Un même numéro de lot ne peut pas être ajouté deux fois pour le même produit.

@@ -17,6 +17,7 @@ interface MovementWithProduct {
     name: string;
     unit: string;
     boxes_per_carton: number;
+    lots?: { lot_number: string }[];
   };
 }
 
@@ -46,7 +47,7 @@ const Reports = () => {
   
         const { data, error } = await supabase
           .from('stock_movements')
-          .select('*, product:products(name, unit, boxes_per_carton)')
+          .select('*, product:products(name, unit, boxes_per_carton, lots:product_lots(lot_number))')
           .gte('created_at', start)
           .lte('created_at', end)
           .order('created_at', { ascending: true });
@@ -127,10 +128,14 @@ const Reports = () => {
           const bpc = m.product?.boxes_per_carton || 1;
           // Convert units to cartons for entries
           productStats[pName].cartonsReceived += (m.quantity / bpc);
-          if (m.reference) productStats[pName].lots.add(m.reference);
         } else {
           // Keep units (boxes) for distributions
           productStats[pName].boxesDistributed += m.quantity;
+        }
+        
+        // Add lots from product definition (managed in Products tab)
+        if (m.product?.lots) {
+          m.product.lots.forEach(l => productStats[pName].lots.add(l.lot_number));
         }
       });
 
