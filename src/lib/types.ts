@@ -23,6 +23,14 @@ export interface Product {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  lots?: ProductLot[];
+}
+
+export interface ProductLot {
+  id: string;
+  product_id: string;
+  lot_number: string;
+  created_at: string;
 }
 
 export interface StockMovement {
@@ -70,9 +78,23 @@ export type Database = {
       };
       products: {
         Row: Product;
-        Insert: Omit<Product, 'id' | 'created_at' | 'updated_at'>;
-        Update: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at'>>;
+        Insert: Omit<Product, 'id' | 'created_at' | 'updated_at' | 'lots'>;
+        Update: Partial<Omit<Product, 'id' | 'created_at' | 'updated_at' | 'lots'>>;
         Relationships: [];
+      };
+      product_lots: {
+        Row: ProductLot;
+        Insert: Omit<ProductLot, 'id' | 'created_at'>;
+        Update: never;
+        Relationships: [
+          {
+            foreignKeyName: "product_lots_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          }
+        ];
       };
       stock_movements: {
         Row: StockMovement;

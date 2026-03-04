@@ -1,6 +1,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Product } from '../lib/types';
 import { useProducts, useDeleteProduct } from '../hooks/useProducts';
 import { 
   Plus, 
@@ -9,9 +10,11 @@ import {
   Trash2, 
   AlertTriangle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Layers
 } from 'lucide-react';
 import ConfirmationModal from '../components/ConfirmationModal';
+import LotManagerModal from '../components/LotManagerModal';
 import { useToast } from '../components/Toast';
 import { formatStockDisplay } from '../lib/utils';
 
@@ -39,6 +42,9 @@ const Products = () => {
 
   // Delete modal state
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+
+  // Lot Manager modal state
+  const [selectedProductForLots, setSelectedProductForLots] = useState<Product | null>(null);
 
   // Handlers
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,6 +135,9 @@ const Products = () => {
                   <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Stock Actuel
                   </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Lots
+                  </th>
                   <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
@@ -169,6 +178,24 @@ const Products = () => {
                         }`}>
                           {formatStockDisplay(product.current_stock, product.boxes_per_carton, product.unit)}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        <div className="flex flex-col gap-1">
+                          {product.lots && product.lots.length > 0 ? (
+                            <span className="text-gray-700 font-medium">
+                              {product.lots.length} lot(s)
+                            </span>
+                          ) : (
+                            <span className="text-gray-400 italic">Aucun</span>
+                          )}
+                          <button
+                            onClick={() => setSelectedProductForLots(product)}
+                            className="text-primary hover:text-blue-900 text-xs font-medium flex items-center mt-1"
+                          >
+                            <Layers className="h-3 w-3 mr-1" />
+                            Gérer les lots
+                          </button>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end">
@@ -241,6 +268,12 @@ const Products = () => {
         confirmLabel="Supprimer"
         variant="danger"
         isLoading={deleteProductMutation.isPending}
+      />
+
+      <LotManagerModal
+        isOpen={!!selectedProductForLots}
+        onClose={() => setSelectedProductForLots(null)}
+        product={selectedProductForLots}
       />
     </div>
   );

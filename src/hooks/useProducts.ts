@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { Product } from '../lib/types';
+import { Product, ProductLot } from '../lib/types';
 
 export type ProductFilters = {
   search?: string;
@@ -28,7 +28,7 @@ const fetchProducts = async (filters: ProductFilters): Promise<ProductsResponse>
 
   let query = supabase
     .from('products')
-    .select('*', { count: 'exact' })
+    .select('*, lots:product_lots(*)', { count: 'exact' })
     .eq('is_active', true);
 
   // Apply search filter
@@ -135,6 +135,44 @@ export const useDeleteProduct = () => {
       const { error } = await supabase
         .from('products')
         .update({ is_active: false }) // Soft delete
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+};
+
+export const useCreateProductLot = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (newLot: Omit<ProductLot, 'id' | 'created_at'>) => {
+      const { data, error } = await supabase
+        .from('product_lots')
+        .insert([newLot])
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+  });
+};
+
+export const useDeleteProductLot = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('product_lots')
+        .delete()
         .eq('id', id);
 
       if (error) throw error;
